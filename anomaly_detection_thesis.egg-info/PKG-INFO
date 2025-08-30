@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: anomaly-detection-thesis
+Version: 0.1.0
+Summary: anomaly detection using Transformer-based super-resolution models
+Author: Benedict Druegh
+License-File: LICENSE
+Dynamic: author
+Dynamic: license-file
+Dynamic: summary

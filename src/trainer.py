@@ -11,8 +11,8 @@ import copy
 import os
 from decimal import Decimal
 from tqdm import tqdm
-from data import Data
-from helpers import analyze_window_sizes, analyze_window_sizes_gkd, process_images, process_gkd_images 
+from src.data import Data
+from src.helpers import analyze_window_sizes, analyze_window_sizes_gkd, process_images, process_gkd_images 
 from PIL import Image
 from sklearn.metrics import roc_curve, auc, roc_auc_score
 

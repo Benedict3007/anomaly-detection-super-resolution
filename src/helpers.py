@@ -22,10 +22,10 @@ from sklearn.metrics import precision_score, recall_score, f1_score
 from collections import defaultdict
 from skimage import exposure
 
-from checkpoint import Checkpoint
-from model import Model
-from data import Data
-from loss import Loss
+from src.checkpoint import Checkpoint
+from src.model import Model
+from src.data import Data
+from src.loss import Loss
 # from trainer import Trainer
 
 def prepare(device, *args):
