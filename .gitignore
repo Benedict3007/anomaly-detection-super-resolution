@@ -39,17 +39,12 @@ Thumbs.db
 # 3. Datasets & Large Files
 # Ignore all raw and processed data directories and compressed files.
 # Add a README in your data folder explaining how to get the data.
-data/
-gkd-dataset/
-*.zip
-*.tar.gz
-*.tiff
+data/*
 
 # 4. ML Models & Checkpoints
 # Ignore trained model files. They are large binary files.
 *.pt
 *.pth
-*.h5
 checkpoints/
 saved_models/
 
@@ -61,7 +56,7 @@ nohup.out
 *.log
 handout/
 workspace/
-results/
+results/*
 anomaly_maps/
 
 # 6. Jupyter Notebook Checkpoints
