@@ -35,7 +35,8 @@ Thumbs.db
 # 3. Datasets & Large Files
 # Ignore all raw and processed data directories and compressed files.
 # Add a README in your data folder explaining how to get the data.
-data/mvtec/
+data/*
+!data/README.md
 
 # 4. ML Models & Checkpoints
 # Ignore trained model files. They are large binary files.
@@ -51,6 +52,8 @@ logs/
 nohup.out
 *.log
 handout/
+results/*
+!results/README.md
 workspace/
 anomaly_maps/
 
