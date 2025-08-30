@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# Logs and outputs
+logs/
+nohup.out
+*.log
+
+# Model checkpoints
+*.pt
+*.pth
+*.h5
+checkpoints/
+saved_models/
+
+# Data (too large for GitHub)
+data/mvtec_anomaly_detection/
+data/gkd/
+*.zip
+*.tar.gz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+workspace/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+TODO.txt
+temp/
+tmp/
