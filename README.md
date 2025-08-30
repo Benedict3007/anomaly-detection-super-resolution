@@ -21,7 +21,7 @@ In industrial manufacturing, reliably detecting visual anomalies is critical for
 
 The chart below compares the anomaly detection performance (AUC Score) of the proposed Super-Resolution models (DRN-L, DRCT-L) against the state-of-the-art EfficientAD model across various industrial datasets and image configurations.
 
-![Model Performance Comparison](link-to-your-image.png)
+![Model Performance Comparison](assets/results_graph.png)
 
 *Caption: The SR-based models demonstrate competitive performance against a specialized anomaly detection model, particularly on the MVTec Carpet dataset, validating the core hypothesis that reconstruction error can serve as an effective proxy for anomaly detection.*
 
