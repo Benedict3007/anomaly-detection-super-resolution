@@ -23,7 +23,7 @@ The chart below compares the anomaly detection performance (AUC Score) of the pr
 
 ![Model Performance Comparison](assets/results_graph.png)
 
-*Caption: The SR-based models demonstrate competitive performance against a specialized anomaly detection model, particularly on the MVTec Carpet dataset, validating the core hypothesis that reconstruction error can serve as an effective proxy for anomaly detection.*
+*Caption: The SR-based models demonstrate competitive performance against a specialized anomaly detection model, particularly on the MVTec Grid dataset, validating the core hypothesis that reconstruction error can serve as an effective proxy for anomaly detection.*
 
 ---
 
