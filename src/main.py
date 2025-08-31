@@ -5,6 +5,8 @@ import numpy as np
 import datetime
 import time
 import copy
+import argparse
+import sys
 from dataclasses import dataclass
 from sklearn.metrics import roc_auc_score
 from src.helpers import calculate_ssim, calculate_psnr
@@ -172,6 +174,28 @@ def setup_opt_drn(opt, best_auc, ssim_window_size, dataset, classe, slurm, scale
     opt.best_auc = best_auc
 
     return opt
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Training/Evaluation entrypoint')
+    parser.add_argument('--model-type', type=str, default='drct', choices=['drct', 'drn-l'])
+    parser.add_argument('--dataset', type=str, default='mvtec', choices=['mvtec', 'gkd', 'gkd_large'])
+    parser.add_argument('--classe', type=str, default='grid')
+    parser.add_argument('--scale', type=int, default=4)
+    parser.add_argument('--resolution', type=int, default=128)
+    parser.add_argument('--epochs', type=int, default=2)
+    parser.add_argument('--batch-size', type=int, default=4)
+    parser.add_argument('--lr', type=float, default=2e-4)
+    parser.add_argument('--n-colors', type=int, default=None)
+    parser.add_argument('--no-augment', action='store_true')
+    parser.add_argument('--device', type=str, default='auto', choices=['auto', 'cuda', 'mps', 'cpu'])
+    parser.add_argument('--data-root', type=str, default='data/mvtec_128')
+    parser.add_argument('--save-dir', type=str, default='./workspace/experiment')
+    parser.add_argument('--pretrain', action='store_true')
+    parser.add_argument('--test-only', action='store_true')
+    # DataLoader workers (default 0 on macOS to avoid runpy RuntimeWarning spam)
+    default_workers = 0 if sys.platform == 'darwin' else 4
+    parser.add_argument('--workers', type=int, default=default_workers)
+    return parser.parse_args()
 
 def setup_opt_drct(opt, best_auc, ssim_window_size, dataset, classe, slurm, scale, no_augment, n_colors, epochs, batch_size, patch_size, img_size, data_dir, save, data_range, test_every, print_every, patience, min_delta, n_threads, pre_trained, loss):
     opt.scale = scale
@@ -370,182 +394,87 @@ def train_drct(opt_drct):
         checkpoint_drct.done()
 
 if __name__ == "__main__":
+    args = parse_args()
     slurm = False
     # Defaults for local runs (used by evaluation utilities)
     best_auc = 0.0
     ssim_window_size = 11
-    
-    model_type = 'drct'
-    pre_train = False
-    
-    mvtec = ['grid']
-    gkd = ['DC2']
-    datasets = ['mvtec']
-    scaling = [4]
-    resolutions = [128]
-    for reso in resolutions:
-        for ds in datasets:
-            if ds == 'mvtec':
-                classes = mvtec
-            elif ds == 'gkd':
-                classes = gkd
-            elif ds == 'gkd_large':
-                classes = gkd
-            else:
-                raise ValueError(f"Unknown dataset: {ds}")
 
-            for class_name in classes:
-                torch.cuda.empty_cache()
-                # Parameter
-                img_resolution = reso
-                scale = scaling[0]
-                no_augment = False
-                print(f"Model: {model_type}")
-                print(f"Dataset: {ds}")
-                print(f"Class: {class_name}")
-                print(f"Resolution: {reso}")
-                print(f"Scale: {scale}")
-                
-                if class_name == "carpet":
-                    n_colors = 3
-                    if model_type == 'drn-l' and scale == 2:
-                        pre_train = False
-                else:
-                    n_colors = 1
-                    if model_type == 'drn-l':
-                        pre_train = False
+    model_type = args.model_type
+    pre_train = args.pretrain
+    ds = args.dataset
+    class_name = args.classe
+    img_resolution = args.resolution
+    scale = args.scale
+    epochs = args.epochs
+    batch_size = args.batch_size
+    no_augment = args.no_augment
 
-                if ds == 'mvtec':
-                    # small local run
-                    epochs = 2
-                    batch_size = 4
-                elif ds == 'gkd':
-                    epochs = 500
-                    batch_size = 64
-                elif ds == 'gkd_large':
-                    epochs = 500
-                    batch_size = 64
-                else:
-                    raise ValueError(f"Unknown dataset: {ds}")
+    print(f"Model: {model_type}")
+    print(f"Dataset: {ds}")
+    print(f"Class: {class_name}")
+    print(f"Resolution: {img_resolution}")
+    print(f"Scale: {scale}")
 
-                patch_size = img_resolution
-                img_size = img_resolution // scale
+    if args.n_colors is not None:
+        n_colors = args.n_colors
+    else:
+        n_colors = 3 if (ds == 'mvtec' and class_name == 'carpet') else 1
 
-                now = datetime.datetime.now()
+    patch_size = img_resolution
+    img_size = img_resolution // scale
 
-                if slurm:
-                    date_string = now.strftime("%H:%M:%S")
-                    if ds == 'mvtec':
-                        data_dir = f'/europa/hpc-homes/bd6102s/workspace/mvtec_anomaly_detection_modified/{class_name}/train/HR_{img_resolution}'
-                        if model_type == 'drn-l':
-                            save = f'/europa/hpc-homes/bd6102s/workspace/experiment/drn-l/mvtec_{class_name}_{img_resolution}_X{scale}{date_string}/'
-                        elif model_type == 'drct':
-                            save = f'/europa/hpc-homes/bd6102s/workspace/experiment/drct/mvtec_{class_name}_{img_resolution}_X{scale}{date_string}/'
-                        else:
-                            raise ValueError(f"Unknown Model Type: {model_type}")
-                    elif ds == 'gkd':
-                        data_dir = f'/europa/hpc-homes/bd6102s/workspace/gkd/{class_name}/train/HR_{img_resolution}'
-                        if model_type == 'drn-l':
-                            save = f'/europa/hpc-homes/bd6102s/workspace/experiment/drn-l/gkd_{class_name}_{img_resolution}_X{scale}{date_string}/'
-                        elif model_type == 'drct':
-                            save = f'/europa/hpc-homes/bd6102s/workspace/experiment/drct/gkd_{class_name}_{img_resolution}_X{scale}{date_string}/'
-                        else:
-                            raise ValueError(f"Unknown Model Type: {model_type}")
-                    elif ds == 'gkd_large':
-                        data_dir = f'/europa/hpc-homes/bd6102s/workspace/gkd_large/{class_name}/train/HR_{img_resolution}'
-                        if model_type == 'drn-l':
-                            save = f'/europa/hpc-homes/bd6102s/workspace/experiment/drn-l/gkd_large_{class_name}_{img_resolution}_X{scale}{date_string}/'
-                        elif model_type == 'drct':
-                            save = f'/europa/hpc-homes/bd6102s/workspace/experiment/drct/gkd_large_{class_name}_{img_resolution}_X{scale}{date_string}/'
-                        else:
-                            raise ValueError(f"Unknown Model Type: {model_type}")
-                    else:
-                        raise ValueError(f"Unknown dataset: {ds}")
-                else:
-                    date_string = now.strftime("%H:%M:%S")
-                    if ds == 'mvtec':
-                        # point to prepared local dataset
-                        data_dir = f'data/mvtec_128/{class_name}/train/good'
-                        if model_type == 'drn-l':
-                            save = f'./workspace/experiment/drn-l/mvtec_{class_name}_{img_resolution}_X{scale}{date_string}/'
-                        elif model_type == 'drct':
-                            save = f'./workspace/experiment/drct/mvtec_{class_name}_{img_resolution}_X{scale}{date_string}/'
-                        else:
-                            raise ValueError(f"Unknown Model Type: {model_type}")
-                    elif ds == 'gkd':
-                        data_dir = f'workspace/gkd/{class_name}/train/HR_{img_resolution}'
-                        if model_type == 'drn-l':
-                            save = f'./workspace/experiment/drn-l/gkd_{class_name}_{img_resolution}_X{scale}{date_string}/'
-                        elif model_type == 'drct':
-                            save = f'./workspace/experiment/drct/gkd_{class_name}_{img_resolution}_X{scale}{date_string}/'
-                        else:
-                            raise ValueError(f"Unknown Model Type: {model_type}")
-                    elif ds == 'gkd_large':
-                        data_dir = f'workspace/gkd_large/{class_name}/train/HR_{img_resolution}'
-                        if model_type == 'drn-l':
-                            save = f'./workspace/experiment/drn-l/gkd_large_{class_name}_{img_resolution}_X{scale}{date_string}/'
-                        elif model_type == 'drct':
-                            save = f'./workspace/experiment/drct/gkd_large_{class_name}_{img_resolution}_X{scale}{date_string}/'
-                        else:
-                            raise ValueError(f"Unknown Model Type: {model_type}")
-                    else:
-                        raise ValueError(f"Unknown dataset: {ds}")
+    now = datetime.datetime.now()
+    date_string = now.strftime("%H:%M:%S")
 
-                # MVTec Carpet Datarange
-                # data_range: str='1-224/225-280' # train test data range
-                if class_name == "carpet":
-                    data_range: str='1-224/225-280'
-                    dataset_length = 256
-                elif class_name == "grid":
-                    data_range: str='1-210/211-264'
-                    dataset_length = 256
-                elif class_name == 'DC0' or class_name == 'DC2':
-                    if ds == 'gkd':
-                        data_range: str='1-2083/2084-2604' # train test data range
-                        # data_range: str='1-12600/12601-14000' # train test data range
-                        dataset_length = 2084
-                    elif ds == 'gkd_large':
-                        data_range: str='1-12600/12601-14000' # train test data range
-                        dataset_length = 14000
-                    else:
-                        raise ValueError(f"Unknown dataset: {ds}")
-                else:
-                    raise ValueError(f"Unknown class name: {class_name}")
+    # Data/save paths (simple local defaults)
+    if ds == 'mvtec':
+        data_dir = f"{args.data_root}/{class_name}/train/good"
+    elif ds == 'gkd':
+        data_dir = f"workspace/gkd/{class_name}/train/HR_{img_resolution}"
+    elif ds == 'gkd_large':
+        data_dir = f"workspace/gkd_large/{class_name}/train/HR_{img_resolution}"
+    else:
+        raise ValueError(f"Unknown dataset: {ds}")
 
-                test_every = dataset_length // batch_size
-                print_every = test_every
-                patience = 1
-                min_delta = 0.005
+    save = f"{args.save_dir}/{model_type}/mvtec_{class_name}_{img_resolution}_X{scale}{date_string}/" if ds == 'mvtec' else f"{args.save_dir}/{model_type}/{ds}_{class_name}_{img_resolution}_X{scale}{date_string}/"
 
-                n_threads = 4
-                loss = '1*L1'
+    # Datarange and dataset length (kept simple)
+    if ds == 'mvtec':
+        data_range = '1-210/211-264' if class_name == 'grid' else '1-224/225-280'
+        dataset_length = 256
+    elif ds == 'gkd':
+        data_range = '1-2083/2084-2604'
+        dataset_length = 2084
+    else:
+        data_range = ''
+        dataset_length = batch_size
 
-                if model_type == 'drn-l':
-                    # DRN-L
-                    if pre_train:
-                        if slurm:
-                            pre_trained = f'/europa/hpc-homes/bd6102s/workspace/pretrained_model_weights/DRNL{scale}x.pt'
-                            pre_trained_dual = f'/europa/hpc-homes/bd6102s/workspace/pretrained_model_weights/DRNL{scale}x_dual_model.pt'
-                        else:
-                            pre_trained = f'workspace/pretrained_model_weights/DRNL{scale}x.pt'
-                            pre_trained_dual = f'workspace/pretrained_model_weights/DRNL{scale}x_dual_model.pt'
-                    else:
-                        pre_trained = '.'
-                        pre_trained_dual = '.'
-                    opt_drn = DRN()
-                    opt_drn = setup_opt_drn(opt_drn, best_auc, ssim_window_size, ds, class_name, slurm, scale, no_augment, n_colors, epochs, batch_size, patch_size, data_dir, save, data_range, test_every, print_every, patience, min_delta, n_threads, pre_trained, pre_trained_dual, loss)
-                    train_drn(opt_drn)
-                elif model_type == 'drct':
-                    # DRCT
-                    if pre_train:
-                        if slurm:
-                            pre_trained = '/europa/hpc-homes/bd6102s/workspace/pretrained_model_weights/net_g_latest.pth'
-                        else:
-                            pre_trained = 'workspace/pretrained_model_weights/net_g_latest.pth'
-                    else:
-                        pre_trained = '.'
-                    opt_drct = DRCT()
-                    opt_drct = setup_opt_drct(opt_drct, best_auc, ssim_window_size, ds, class_name, slurm, scale, no_augment, n_colors, epochs, batch_size, patch_size, img_size, data_dir, save, data_range, test_every, print_every, patience, min_delta, n_threads, pre_trained, loss)
-                    train_drct(opt_drct)
-                else:
-                    raise ValueError(f"Unknown Model Type: {model_type}")
+    test_every = dataset_length // batch_size
+    print_every = test_every
+    patience = 1
+    min_delta = 0.005
+    n_threads = 4
+    loss = '1*L1'
+
+    if model_type == 'drn-l':
+        if pre_train:
+            pre_trained = f'workspace/pretrained_model_weights/DRNL{scale}x.pt'
+            pre_trained_dual = f'workspace/pretrained_model_weights/DRNL{scale}x_dual_model.pt'
+        else:
+            pre_trained = '.'
+            pre_trained_dual = '.'
+        opt_drn = DRN()
+        opt_drn = setup_opt_drn(opt_drn, best_auc, ssim_window_size, ds, class_name, slurm, scale, no_augment, n_colors, epochs, batch_size, patch_size, data_dir, save, data_range, test_every, print_every, patience, min_delta, n_threads, pre_trained, pre_trained_dual, loss)
+        if args.device == 'cpu':
+            opt_drn.cpu = True
+        train_drn(opt_drn)
+    elif model_type == 'drct':
+        pre_trained = 'workspace/pretrained_model_weights/net_g_latest.pth' if pre_train else '.'
+        opt_drct = DRCT()
+        opt_drct = setup_opt_drct(opt_drct, best_auc, ssim_window_size, ds, class_name, slurm, scale, no_augment, n_colors, epochs, batch_size, patch_size, img_size, data_dir, save, data_range, test_every, print_every, patience, min_delta, n_threads, pre_trained, loss)
+        opt_drct.cpu = (args.device == 'cpu')
+        opt_drct.test_only = args.test_only
+        train_drct(opt_drct)
+    else:
+        raise ValueError(f"Unknown Model Type: {model_type}")

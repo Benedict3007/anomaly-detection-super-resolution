@@ -202,7 +202,7 @@ class Data:
             self.loader_train = DataLoader(
                 trainset,
                 batch_size=args.batch_size,
-                num_workers=args.n_threads,
+                num_workers=getattr(args, 'workers', args.n_threads),
                 shuffle=True,
                 pin_memory=(not args.cpu) and torch.cuda.is_available()
             )
@@ -213,7 +213,7 @@ class Data:
         self.loader_test = DataLoader(
             testset,
             batch_size=args.batch_size,
-            num_workers=args.n_threads,
+            num_workers=getattr(args, 'workers', args.n_threads),
             shuffle=False,
             pin_memory=(not args.cpu) and torch.cuda.is_available()
         )

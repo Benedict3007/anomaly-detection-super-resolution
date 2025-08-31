@@ -9,10 +9,5 @@ __version__ = "0.1.0"
 __author__ = "Benedict Druegh"
 __description__ = "Industrial anomaly detection using Transformer-based super-resolution models"
 
-# Import main components
-try:
-    from .main import main, parse_args
-    __all__ = ["main", "parse_args"]
-except ImportError:
-    # During development, some modules might not be ready
-    __all__ = []
+# Keep package metadata only; avoid importing submodules at package import time
+__all__ = []
