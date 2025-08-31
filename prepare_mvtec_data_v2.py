@@ -37,16 +37,17 @@ def save_image_pair(hr_image, lr_image, hr_path, lr_path):
     hr_image.save(hr_path)
     lr_image.save(lr_path)
 
-def process_training_data(source_dir, target_dir, scale_factor=4):
-    """Process training data: resize to 128x128 and create LR versions."""
+def process_training_data(source_dir, target_dir, scale_factors=(2, 4)):
+    """Process training data: resize to 128x128 and create LR versions for all requested scales."""
     print(f"📁 Processing training data: {source_dir.name}")
     
     # Create target directories
     hr_dir = target_dir / "good" / "HR"
-    lr_dir = target_dir / "good" / f"LR_{scale_factor}"
-    
     hr_dir.mkdir(parents=True, exist_ok=True)
-    lr_dir.mkdir(parents=True, exist_ok=True)
+    lr_dirs = {}
+    for s in scale_factors:
+        lr_dirs[s] = target_dir / "good" / f"LR_{s}"
+        lr_dirs[s].mkdir(parents=True, exist_ok=True)
     
     # Get all training images
     image_files = list(source_dir.glob("*.png"))
@@ -56,28 +57,36 @@ def process_training_data(source_dir, target_dir, scale_factor=4):
         # Resize to 128x128
         hr_128 = resize_image(img_file, target_size=(128, 128))
         
-        # Create LR version (32x32 for 4x scale)
-        lr_32 = create_lr_image(hr_128, scale_factor=scale_factor)
-        
-        # Save both versions
+        # Save HR once
         hr_path = hr_dir / img_file.name
-        lr_path = lr_dir / img_file.name
-        
-        save_image_pair(hr_128, lr_32, hr_path, lr_path)
+        hr_path.parent.mkdir(parents=True, exist_ok=True)
+        hr_128.save(hr_path)
+
+        # Create and save LR images for each scale
+        for s in scale_factors:
+            lr_img = create_lr_image(hr_128, scale_factor=s)
+            lr_path = lr_dirs[s] / img_file.name
+            lr_img.save(lr_path)
     
     print(f"  ✅ Created {len(image_files)} HR/LR pairs")
 
-def process_test_data(source_dir, target_dir, scale_factor=4):
-    """Process test data: organize into good/bad structure."""
+def process_test_data(source_dir, target_dir, scale_factors=(2, 4)):
+    """Process test data: organize into good/bad structure for all requested scales."""
     print(f"📁 Processing test data: {source_dir.name}")
     
     # Create target directories
     good_hr_dir = target_dir / "good" / "HR"
-    good_lr_dir = target_dir / "good" / f"LR_{scale_factor}"
     bad_hr_dir = target_dir / "bad" / "HR"
-    bad_lr_dir = target_dir / "bad" / f"LR_{scale_factor}"
     
-    for dir_path in [good_hr_dir, good_lr_dir, bad_hr_dir, bad_lr_dir]:
+    dirs_to_make = [good_hr_dir, bad_hr_dir]
+    good_lr_dirs = {}
+    bad_lr_dirs = {}
+    for s in scale_factors:
+        good_lr_dirs[s] = target_dir / "good" / f"LR_{s}"
+        bad_lr_dirs[s] = target_dir / "bad" / f"LR_{s}"
+        dirs_to_make.extend([good_lr_dirs[s], bad_lr_dirs[s]])
+
+    for dir_path in dirs_to_make:
         dir_path.mkdir(parents=True, exist_ok=True)
     
     # Process good images
@@ -88,11 +97,15 @@ def process_test_data(source_dir, target_dir, scale_factor=4):
         
         for img_file in tqdm(good_images, desc="  good", leave=False):
             hr_128 = resize_image(img_file, target_size=(128, 128))
-            lr_32 = create_lr_image(hr_128, scale_factor=scale_factor)
             
             hr_path = good_hr_dir / img_file.name
-            lr_path = good_lr_dir / img_file.name
-            save_image_pair(hr_128, lr_32, hr_path, lr_path)
+            hr_path.parent.mkdir(parents=True, exist_ok=True)
+            hr_128.save(hr_path)
+
+            for s in scale_factors:
+                lr_img = create_lr_image(hr_128, scale_factor=s)
+                lr_path = good_lr_dirs[s] / img_file.name
+                lr_img.save(lr_path)
     
     # Process all anomaly images (combine into bad)
     anomaly_dirs = [d for d in source_dir.iterdir() if d.is_dir() and d.name != "good"]
@@ -104,14 +117,17 @@ def process_test_data(source_dir, target_dir, scale_factor=4):
         
         for img_file in tqdm(anomaly_images, desc=f"    {anomaly_dir.name}", leave=False):
             hr_128 = resize_image(img_file, target_size=(128, 128))
-            lr_32 = create_lr_image(hr_128, scale_factor=scale_factor)
             
             # Create unique filename to avoid conflicts
             new_name = f"{anomaly_dir.name}_{img_file.name}"
             hr_path = bad_hr_dir / new_name
-            lr_path = bad_lr_dir / new_name
-            
-            save_image_pair(hr_128, lr_32, hr_path, lr_path)
+            hr_path.parent.mkdir(parents=True, exist_ok=True)
+            hr_128.save(hr_path)
+
+            for s in scale_factors:
+                lr_img = create_lr_image(hr_128, scale_factor=s)
+                lr_path = bad_lr_dirs[s] / new_name
+                lr_img.save(lr_path)
             total_bad += 1
     
     # Count final results
@@ -121,8 +137,8 @@ def process_test_data(source_dir, target_dir, scale_factor=4):
     print(f"  ✅ Good test images: {good_count}")
     print(f"  ✅ Bad test images: {bad_count}")
 
-def prepare_mvtec_dataset(source_base="data/mvtec", target_base="data/mvtec_128", scale_factor=4):
-    """Prepare the complete MVTec dataset for 128x128 training."""
+def prepare_mvtec_dataset(source_base="data/mvtec", target_base="data/mvtec_128", scale_factors=(2, 4)):
+    """Prepare the complete MVTec dataset for 128x128 training with LR_2 and LR_4."""
     print("🚀 Preparing MVTec AD dataset for 128x128 training")
     print("=" * 60)
     
@@ -150,13 +166,13 @@ def prepare_mvtec_dataset(source_base="data/mvtec", target_base="data/mvtec_128"
         
         # Process training data
         if train_source.exists():
-            process_training_data(train_source, train_target, scale_factor)
+            process_training_data(train_source, train_target, scale_factors)
         else:
             print(f"  ❌ Training data not found: {train_source}")
         
         # Process test data
         if test_source.exists():
-            process_test_data(test_source, test_target, scale_factor)
+            process_test_data(test_source, test_target, scale_factors)
         else:
             print(f"  ❌ Test data not found: {test_source}")
     
@@ -176,7 +192,8 @@ def verify_dataset_structure(base_dir):
         
         # Check training data
         train_hr = base_path / class_name / "train" / "good" / "HR"
-        train_lr = base_path / class_name / "train" / "good" / "LR_4"
+        train_lr2 = base_path / class_name / "train" / "good" / "LR_2"
+        train_lr4 = base_path / class_name / "train" / "good" / "LR_4"
         
         if train_hr.exists():
             train_count = len(list(train_hr.glob("*.png")))
@@ -184,9 +201,15 @@ def verify_dataset_structure(base_dir):
         else:
             print(f"    ❌ train/good/HR: missing")
             
-        if train_lr.exists():
-            lr_count = len(list(train_lr.glob("*.png")))
-            print(f"    ✅ train/good/LR_4: {lr_count} images")
+        if train_lr2.exists():
+            lr2_count = len(list(train_lr2.glob("*.png")))
+            print(f"    ✅ train/good/LR_2: {lr2_count} images")
+        else:
+            print(f"    ❌ train/good/LR_2: missing")
+
+        if train_lr4.exists():
+            lr4_count = len(list(train_lr4.glob("*.png")))
+            print(f"    ✅ train/good/LR_4: {lr4_count} images")
         else:
             print(f"    ❌ train/good/LR_4: missing")
         
@@ -223,7 +246,7 @@ def main():
     prepare_mvtec_dataset(
         source_base="data/mvtec",
         target_base="data/mvtec_128",
-        scale_factor=4
+        scale_factors=(2, 4)
     )
     
     # Verify structure

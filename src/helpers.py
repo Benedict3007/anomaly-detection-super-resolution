@@ -104,18 +104,23 @@ def setup_logger(log_file_path):
                         datefmt='%Y-%m-%d %H:%M:%S')
 
 def calculate_ssim(original, reconstructed, win_size):
+    # Determine data range based on dtype; assume float images are in [0,1]
+    dr = 1.0 if np.issubdtype(np.asarray(original).dtype, np.floating) else 255
     if len(original.shape) == 2 and len(reconstructed.shape) == 2:
-        return ssim(original, reconstructed, win_size=win_size, data_range=255)
+        return ssim(original, reconstructed, win_size=win_size, data_range=dr)
     elif len(original.shape) == 3 and len(reconstructed.shape) == 3:
-        return ssim(original, reconstructed, win_size=win_size, data_range=255, channel_axis=-1)
+        return ssim(original, reconstructed, win_size=win_size, data_range=dr, channel_axis=-1)
     else:
         raise ValueError("Input images must have the same dimensions (both 2D or both 3D)")
         
 def calculate_mse(original, reconstructed):
-    return np.mean((original - reconstructed) ** 2)
+    o = np.asarray(original, dtype=np.float32)
+    r = np.asarray(reconstructed, dtype=np.float32)
+    return float(np.mean((o - r) ** 2))
 
 def calculate_psnr(original, reconstructed):
-    return psnr(original, reconstructed, data_range=255)
+    dr = 1.0 if np.issubdtype(np.asarray(original).dtype, np.floating) else 255
+    return psnr(original, reconstructed, data_range=dr)
 
 def min_max_scaling(image_array):
     min_val = np.min(image_array)
