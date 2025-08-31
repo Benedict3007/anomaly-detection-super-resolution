@@ -61,6 +61,11 @@ class Checkpoint():
         self.log_file.close()
 
     def plot_psnr_ssim(self, epoch):
+        # Skip plotting if no evaluation logs have been recorded
+        if self.log.numel() == 0 or self.log.dim() < 2 or self.log.shape[1] < 2:
+            self.write_log('No evaluation logs available; skipping PSNR/SSIM plot')
+            return
+
         axis = np.linspace(1, epoch, epoch)
         label = 'SR on {}'.format(self.opt.data_test)
         fig = plt.figure(figsize=(10, 5))

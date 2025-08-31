@@ -8,6 +8,7 @@ import torch.optim as optim
 import torch.optim.lr_scheduler as lrs
 import torch.nn.functional as F
 import copy
+import contextlib
 import os
 from decimal import Decimal
 from tqdm import tqdm
@@ -183,7 +184,9 @@ class Trainer():
             self.dual_optimizers = make_dual_optimizer(opt, self.dual_models)
             self.dual_scheduler = make_dual_scheduler(opt, self.dual_optimizers)
         self.error_last = 1e8
-        self.scaler = torch.cuda.amp.GradScaler()
+        # Enable AMP only on CUDA; disable on CPU/MPS for stability
+        self.use_amp = (not self.opt.cpu) and torch.cuda.is_available()
+        self.scaler = torch.cuda.amp.GradScaler(enabled=self.use_amp)
 
         # Early Stopping Variables
         self.patience = opt.patience
@@ -218,7 +221,8 @@ class Trainer():
                     self.dual_optimizers[i].zero_grad()
 
             # forward
-            with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
+            amp_ctx = torch.amp.autocast(device_type="cuda", dtype=torch.float16) if self.use_amp else contextlib.nullcontext()
+            with amp_ctx:
                 sr = self.model(lr[0])
                 
                 if self.dual_model:
@@ -244,15 +248,21 @@ class Trainer():
                     loss = self.loss(sr, hr)
             
             # if loss.item() < self.opt.skip_threshold * self.error_last:
-            self.scaler.scale(loss).backward()
-            #loss.backward()                
-            self.scaler.step(self.optimizer)
+            if self.use_amp:
+                self.scaler.scale(loss).backward()
+                self.scaler.step(self.optimizer)
+            else:
+                loss.backward()
+                self.optimizer.step()
             #self.optimizer.step()
             if self.dual_model:
                 for i in range(len(self.dual_optimizers)):
-                    self.scaler.step(self.dual_optimizers[i])
-                    #self.dual_optimizers[i].step()
-            self.scaler.update()
+                    if self.use_amp:
+                        self.scaler.step(self.dual_optimizers[i])
+                    else:
+                        self.dual_optimizers[i].step()
+            if self.use_amp:
+                self.scaler.update()
 
             # else:
             #     print('Skip this batch {}! (Loss: {})'.format(
@@ -311,7 +321,8 @@ class Trainer():
                     else:
                         lr, = self.prepare(lr)
 
-                    with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
+                    amp_ctx = torch.amp.autocast(device_type="cuda", dtype=torch.float16) if self.use_amp else contextlib.nullcontext()
+                    with amp_ctx:
                         sr = self.model(lr[0])
                     #sr = self.model(lr[0])
                         
@@ -630,7 +641,16 @@ class Trainer():
                 self.dual_scheduler[i].step()
 
     def prepare(self, *args):
-        device = torch.device('cpu' if self.opt.cpu else 'cuda')
+        # Use model-selected device (CUDA, MPS, or CPU)
+        if hasattr(self.model, 'device'):
+            device = self.model.device
+        else:
+            if (not self.opt.cpu) and torch.cuda.is_available():
+                device = torch.device('cuda')
+            elif (not self.opt.cpu) and hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+                device = torch.device('mps')
+            else:
+                device = torch.device('cpu')
 
         if len(args)>1:
             return [a.to(device) for a in args[0]], args[-1].to(device)

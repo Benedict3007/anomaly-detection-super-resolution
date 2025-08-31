@@ -6,11 +6,11 @@ import datetime
 import time
 from dataclasses import dataclass
 
-from checkpoint import Checkpoint
-from model import Model
-from data import Data
-from loss import Loss
-from trainer import Trainer
+from src.checkpoint import Checkpoint
+from src.model import Model
+from src.data import Data
+from src.loss import Loss
+from src.trainer import Trainer
 
 matplotlib.use('Agg')
 
@@ -211,24 +211,9 @@ def train_drn(opt_drn):
         t = Trainer(opt_drn, loader, model, loss, checkpoint_drn, dual_model=True)
         start_time = time.time()
 
-        best_auc = opt_drn.best_auc
-        patience = opt_drn.patience
-        min_delta = opt_drn.min_delta
-        counter = 0
-        iteration = 0
-
+        # Train for the configured number of epochs; no early stopping
         while not t.terminate():
             t.train()
-            iteration += 1
-            if iteration > 10:
-                current_auc = t.test_early_stop()
-                if current_auc >= (best_auc - min_delta):
-                    counter += 1
-                else:
-                    counter =0
-                if counter >= patience:
-                    print("Early stopping triggered. Ending training.")
-                    break
     
 
         # while not t.terminate():
@@ -260,24 +245,9 @@ def train_drct(opt_drct):
         t = Trainer(opt_drct, loader, model, loss, checkpoint_drct, dual_model=False)
         start_time = time.time()
 
-        best_auc = opt_drct.best_auc
-        patience = opt_drct.patience
-        min_delta = opt_drct.min_delta
-        counter = 0
-        iteration = 0
-
+        # Train for the configured number of epochs; no early stopping
         while not t.terminate():
             t.train()
-            iteration += 1
-            if iteration > 299:
-                current_auc = t.test_early_stop()
-                if current_auc >= (best_auc - min_delta):
-                    counter += 1
-                else:
-                    counter =0
-                if counter >= patience:
-                    print("Early stopping triggered. Ending training.")
-                    break
 
         # while not t.terminate():
         #     early_stop = t.train()
@@ -298,8 +268,9 @@ def train_drct(opt_drct):
 
 if __name__ == "__main__":
     slurm = False
-    # best_auc = 0.9
-    # ssim_window_size = 123
+    # Defaults for local runs (used by evaluation utilities)
+    best_auc = 0.0
+    ssim_window_size = 11
     
     model_type = 'drct'
     pre_train = False
@@ -307,7 +278,7 @@ if __name__ == "__main__":
     mvtec = ['grid']
     gkd = ['DC2']
     datasets = ['mvtec']
-    scaling = [8]
+    scaling = [4]
     resolutions = [128]
     for reso in resolutions:
         for ds in datasets:
@@ -342,8 +313,9 @@ if __name__ == "__main__":
                         pre_train = False
 
                 if ds == 'mvtec':
-                    epochs = 1000
-                    batch_size = 32
+                    # small local run
+                    epochs = 2
+                    batch_size = 4
                 elif ds == 'gkd':
                     epochs = 500
                     batch_size = 64
@@ -389,7 +361,8 @@ if __name__ == "__main__":
                 else:
                     date_string = now.strftime("%H:%M:%S")
                     if ds == 'mvtec':
-                        data_dir = f'./workspace/mvtec_anomaly_detection_modified/{class_name}/train/HR_{img_resolution}'
+                        # point to prepared local dataset
+                        data_dir = f'data/mvtec_128/{class_name}/train/good'
                         if model_type == 'drn-l':
                             save = f'./workspace/experiment/drn-l/mvtec_{class_name}_{img_resolution}_X{scale}{date_string}/'
                         elif model_type == 'drct':

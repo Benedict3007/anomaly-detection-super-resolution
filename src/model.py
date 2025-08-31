@@ -60,7 +60,13 @@ class Model(nn.Module):
         self.idx_scale = 0
         self.self_ensemble = opt.self_ensemble
         self.cpu = opt.cpu
-        self.device = torch.device('cpu' if opt.cpu else 'cuda')
+        # Select device: prefer CUDA, then MPS (Apple), else CPU
+        if not opt.cpu and torch.cuda.is_available():
+            self.device = torch.device('cuda')
+        elif not opt.cpu and hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            self.device = torch.device('mps')
+        else:
+            self.device = torch.device('cpu')
         self.n_GPUs = opt.n_GPUs
         self.dual_model = dual_model
 

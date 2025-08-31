@@ -6,6 +6,7 @@ import os
 import imageio.v2 as imageio
 import random
 from torch.utils.data import DataLoader
+from skimage import color as sc
 
 def np2Tensor(*args, rgb_range=255):
     def _np2Tensor(img):
@@ -113,11 +114,22 @@ class SRData(data.Dataset):
         for f in names_hr:
             filename, _ = os.path.splitext(os.path.basename(f))
             for si, s in enumerate(self.scale):
-                names_lr[si].append(os.path.join(
-                    self.dir_lr, 'X{}/{}x{}{}'.format(
-                        s, filename, s, self.ext[1]
-                    )
-                ))
+                # Support DIV2K-style LR_bicubic/X{s}/{filename}x{s}.png
+                cand1 = os.path.join(self.dir_lr, 'LR_bicubic', f'X{s}', f'{filename}x{s}{self.ext[1]}')
+                # Support simplified LR_{s}/{filename}.png
+                cand2 = os.path.join(self.apath, f'LR_{s}', f'{filename}{self.ext[1]}')
+                if os.path.exists(cand1):
+                    path_lr = cand1
+                elif os.path.exists(cand2):
+                    path_lr = cand2
+                else:
+                    # Optional fallback: LR/{filename}.png
+                    cand3 = os.path.join(self.apath, 'LR', f'{filename}{self.ext[1]}')
+                    if os.path.exists(cand3):
+                        path_lr = cand3
+                    else:
+                        raise FileNotFoundError(f"LR image not found for {filename} at scale {s}: tried {cand1}, {cand2}, {cand3}")
+                names_lr[si].append(path_lr)
 
         return names_hr, names_lr
 
@@ -125,7 +137,8 @@ class SRData(data.Dataset):
         # self.apath = os.path.join(data_dir, self.name)
         self.apath = data_dir
         self.dir_hr = os.path.join(self.apath, 'HR')
-        self.dir_lr = os.path.join(self.apath, 'LR_bicubic')
+        # Leave LR root at dataset path; actual LR path chosen in _scan
+        self.dir_lr = self.apath
         self.ext = ('.png', '.png')
 
     def _get_index(self, idx):
@@ -176,9 +189,8 @@ class MVTec(SRData):
         )
 
     def _set_filesystem(self, data_dir):
+        # Use parent implementation with flexible LR handling
         super(MVTec, self)._set_filesystem(data_dir)
-        self.dir_hr = os.path.join(self.apath, 'HR')
-        self.dir_lr = os.path.join(self.apath, 'LR_bicubic')
 
 class Data:
     def __init__(self, args):
