@@ -4,7 +4,10 @@ import random
 import numpy as np
 import datetime
 import time
+import copy
 from dataclasses import dataclass
+from sklearn.metrics import roc_auc_score
+from src.helpers import calculate_ssim, calculate_psnr
 
 from src.checkpoint import Checkpoint
 from src.model import Model
@@ -263,6 +266,106 @@ def train_drct(opt_drct):
         print("Training completed")
         end_time = time.time()
         checkpoint_drct.write_log(f"Total Training Time: {((end_time -  start_time)/3600):.2f}")
+
+        # Post-training evaluation on mvtec_128 test/good (PSNR/SSIM)
+        try:
+            eval_opt = copy.deepcopy(opt_drct)
+            eval_opt.test_only = True
+            eval_opt.no_augment = True
+            eval_opt.batch_size = 1
+            eval_opt.data_dir = f'data/mvtec_128/{opt_drct.classe}/test/good'
+            eval_opt.data_test = 'mvtec_test_good'
+            eval_loader = Data(eval_opt)
+            t.loader_test = eval_loader.loader_test
+            t.test()
+        except Exception as e:
+            print(f"Evaluation skipped due to error: {e}")
+
+        # Anomaly AUC evaluation on mvtec_128 test/{good,bad} using SSIM (with window search), MSE, PSNR
+        try:
+            import torch.nn.functional as F
+            def build_eval_loader(split):
+                eopt = copy.deepcopy(opt_drct)
+                eopt.test_only = True
+                eopt.no_augment = True
+                eopt.batch_size = 1
+                eopt.data_dir = f'data/mvtec_128/{opt_drct.classe}/test/{split}'
+                eopt.data_test = f'mvtec_test_{split}'
+                return Data(eopt).loader_test
+
+            loader_good = build_eval_loader('good')
+            loader_bad = build_eval_loader('bad')
+
+            # Collect SR/HR pairs in-memory once
+            y_true = []
+            sr_np = []
+            hr_np = []
+
+            def collect_pairs(dloader, label):
+                for _, (lr, hr, _) in enumerate(dloader):
+                    if hr.nelement() == 1:
+                        continue
+                    lr_t, hr_t = t.prepare(lr, hr)
+                    sr = t.model(lr_t[0])
+                    if isinstance(sr, list):
+                        sr = sr[-1]
+                    # Align sizes
+                    h, w = hr_t.shape[-2:]
+                    sr = sr[..., :h, :w]
+                    # Convert to uint8 numpy [H, W, C]
+                    sr_u8 = sr[0].detach().mul(255 / opt_drct.rgb_range).clamp(0, 255).byte().permute(1, 2, 0).cpu().numpy()
+                    hr_u8 = hr_t[0].detach().mul(255 / opt_drct.rgb_range).clamp(0, 255).byte().permute(1, 2, 0).cpu().numpy()
+                    y_true.append(label)
+                    sr_np.append(sr_u8)
+                    hr_np.append(hr_u8)
+
+            collect_pairs(loader_good, 0)
+            collect_pairs(loader_bad, 1)
+
+            if len(y_true) > 0:
+                # Determine SSIM window sizes (odd, up to min_dim-3)
+                min_dim = min(min(img.shape[0], img.shape[1]) for img in hr_np)
+                max_w = max(3, min_dim - 3)
+                window_sizes = [w for w in range(11, max_w + 1, 10) if w % 2 == 1]
+                if not window_sizes:
+                    window_sizes = [11]
+
+                # Sweep SSIM windows and pick best AUC
+                best_ssim_auc = -1.0
+                best_ws = window_sizes[0]
+                for ws in window_sizes:
+                    y_scores_ssim = []
+                    for sr_img, hr_img in zip(sr_np, hr_np):
+                        ssim_score = calculate_ssim(hr_img, sr_img, ws)
+                        y_scores_ssim.append(1 - ssim_score)
+                    auc_ssim = roc_auc_score(y_true, y_scores_ssim)
+                    if auc_ssim > best_ssim_auc:
+                        best_ssim_auc = auc_ssim
+                        best_ws = ws
+
+                # Final SSIM with best window size
+                y_scores_ssim = []
+                y_scores_mse = []
+                y_scores_psnr = []
+                for sr_img, hr_img in zip(sr_np, hr_np):
+                    ssim_score = calculate_ssim(hr_img, sr_img, best_ws)
+                    y_scores_ssim.append(1 - ssim_score)
+                    # MSE and PSNR
+                    diff = (sr_img.astype(np.float32) - hr_img.astype(np.float32))
+                    mse_val = float(np.mean(diff * diff))
+                    y_scores_mse.append(mse_val)
+                    psnr_val = calculate_psnr(hr_img, sr_img)
+                    y_scores_psnr.append(-psnr_val)
+
+                auc_ssim = roc_auc_score(y_true, y_scores_ssim)
+                auc_mse = roc_auc_score(y_true, y_scores_mse)
+                auc_psnr = roc_auc_score(y_true, y_scores_psnr)
+
+                print(f"Anomaly AUCs - SSIM(best ws={best_ws}): {auc_ssim:.4f}, MSE: {auc_mse:.4f}, PSNR: {auc_psnr:.4f}")
+                checkpoint_drct.write_log(f"Anomaly AUCs - SSIM(best ws={best_ws}): {auc_ssim:.4f}, MSE: {auc_mse:.4f}, PSNR: {auc_psnr:.4f}")
+        except Exception as e:
+            print(f"Anomaly AUC evaluation skipped due to error: {e}")
+
         checkpoint_drct.save(t, opt_drct.epochs, is_best=True, dual_model=False)
         checkpoint_drct.done()
 

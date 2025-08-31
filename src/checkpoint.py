@@ -66,7 +66,9 @@ class Checkpoint():
             self.write_log('No evaluation logs available; skipping PSNR/SSIM plot')
             return
 
-        axis = np.linspace(1, epoch, epoch)
+        # Use number of evaluation entries for x-axis to match log rows
+        num_points = self.log.shape[0]
+        axis = np.arange(1, num_points + 1)
         label = 'SR on {}'.format(self.opt.data_test)
         fig = plt.figure(figsize=(10, 5))
         

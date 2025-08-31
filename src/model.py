@@ -67,6 +67,9 @@ class Model(nn.Module):
             self.device = torch.device('mps')
         else:
             self.device = torch.device('cpu')
+
+        # Log and print device selection
+        ckp.write_log(f"Using device: {self.device}")
         self.n_GPUs = opt.n_GPUs
         self.dual_model = dual_model
 

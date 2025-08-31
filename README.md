@@ -63,7 +63,7 @@ The chart below compares the anomaly detection performance (AUC Score) of the pr
     - Fill out the form to request access
     - Download the dataset from the email link
     - Extract to `data/mvtec/` folder
-    - Ensure structure: `data/mvtec/carpet/train/`, `data/mvtec/grid/train/`
+    - Ensure structure: `data/mvtec/carpet/`, `data/mvtec/grid/`
 
 6.  **Test the installation:**
     ```bash
