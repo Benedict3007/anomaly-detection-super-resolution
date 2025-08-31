@@ -297,18 +297,17 @@ def train_drct(opt_drct):
         checkpoint_drct.done()
 
 if __name__ == "__main__":
-    # best_drct_dc2_early_stopping_via_slurm
-    slurm = True
-    best_auc = 0.9
-    ssim_window_size = 123
+    slurm = False
+    # best_auc = 0.9
+    # ssim_window_size = 123
     
     model_type = 'drct'
-    pre_train = True 
+    pre_train = False
     
     mvtec = ['grid']
     gkd = ['DC2']
-    datasets = ['gkd']
-    # scaling = [8]
+    datasets = ['mvtec']
+    scaling = [8]
     resolutions = [128]
     for reso in resolutions:
         for ds in datasets:
@@ -325,7 +324,7 @@ if __name__ == "__main__":
                 torch.cuda.empty_cache()
                 # Parameter
                 img_resolution = reso
-                scale = 8
+                scale = scaling[0]
                 no_augment = False
                 print(f"Model: {model_type}")
                 print(f"Dataset: {ds}")
