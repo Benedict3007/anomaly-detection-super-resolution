@@ -1,6 +1,7 @@
 import argparse
 import copy
 import os
+import re
 import sys
 import yaml  # type: ignore[import-untyped]
 import numpy as np
@@ -28,7 +29,7 @@ def parse_args(argv=None):
     p.add_argument('--scale', type=int, default=4)
     p.add_argument('--resolution', type=int, default=128)
     p.add_argument('--device', type=str, default='auto', choices=['auto', 'cuda', 'mps', 'cpu'])
-    p.add_argument('--data-root', type=str, default='data/mvtec_128')
+    p.add_argument('--data-root', type=str, default='auto')
     p.add_argument('--run-dir', type=str, default='')
     p.add_argument('--checkpoint', type=str, default='')
     p.add_argument('--batch-size', type=int, default=1)
@@ -42,6 +43,83 @@ def parse_args(argv=None):
         p.set_defaults(**{k.replace('-', '_'): v for k, v in cfg.items()})
 
     return p.parse_args(argv)
+
+
+def infer_from_run_dir(run_dir: str):
+    """Infer model-type, dataset, class, resolution and scale from run dir and its config.txt.
+    Priority: path name pattern → config.txt (if present).
+    Returns dict with keys: model_type, dataset, classe, resolution, scale.
+    """
+    result: dict[str, object] = {
+        'model_type': None,
+        'dataset': None,
+        'classe': None,
+        'resolution': None,
+        'scale': None,
+    }
+
+    # Try to infer model_type from path segments
+    parts = Path(run_dir).parts
+    for seg in parts:
+        if seg in ('drct', 'drn-l'):
+            result['model_type'] = seg
+            break
+
+    # Try to parse directory name pattern like mvtec_grid_128_X4...
+    base = Path(run_dir).name
+    m = re.match(r"(?P<ds>\w+)_(?P<cls>\w+)_(?P<res>\d+)_X(?P<scale>\d+)", base)
+    if m:
+        result['dataset'] = m.group('ds')
+        result['classe'] = m.group('cls')
+        try:
+            result['resolution'] = int(m.group('res'))
+        except ValueError:
+            pass
+        try:
+            result['scale'] = int(m.group('scale'))
+        except ValueError:
+            pass
+
+    # Fallback to config.txt if exists
+    cfg_path = Path(run_dir) / 'config.txt'
+    if cfg_path.exists():
+        try:
+            with open(cfg_path, 'r') as f:
+                lines = f.readlines()
+            def read_val(key):
+                for line in lines:
+                    if line.strip().startswith(f"{key}:"):
+                        return line.split(':', 1)[1].strip()
+                return None
+            model_name = read_val('model_name')
+            if model_name:
+                result['model_type'] = model_name
+            ds = read_val('dataset')
+            if ds:
+                result['dataset'] = ds
+            cls = read_val('classe')
+            if cls:
+                result['classe'] = cls
+            res = read_val('patch_size')
+            if res and res.isdigit():
+                result['resolution'] = int(res)
+            # scale may be stored as list like [8] or similar
+            scale_val = read_val('upscale') or read_val('scale')
+            if scale_val:
+                try:
+                    # Try to parse an int, or extract the last int in list
+                    if scale_val.isdigit():
+                        result['scale'] = int(scale_val)
+                    else:
+                        ms = re.findall(r"\d+", scale_val)
+                        if ms:
+                            result['scale'] = int(ms[-1])
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    return result
 
 
 def resolve_checkpoint(args):
@@ -199,6 +277,20 @@ def main(argv=None):
     img_resolution = args.resolution
     scale = args.scale
 
+    # If run-dir is provided, infer settings and override for convenience
+    if args.run_dir:
+        inferred = infer_from_run_dir(args.run_dir)
+        if inferred.get('model_type'):
+            model_type = inferred['model_type']
+        if inferred.get('dataset'):
+            ds = inferred['dataset']
+        if inferred.get('classe'):
+            class_name = inferred['classe']
+        if inferred.get('resolution'):
+            img_resolution = inferred['resolution']
+        if inferred.get('scale'):
+            scale = inferred['scale']
+
     # Channel count
     n_colors = 3 if (ds == 'mvtec' and class_name == 'carpet') else 1
 
@@ -211,7 +303,10 @@ def main(argv=None):
     no_augment = True
     patch_size = img_resolution
     img_size = img_resolution // scale
-    data_dir = f"{args.data_root}/{class_name}/train/good"  # not used directly; Data() will override per split
+    data_root = args.data_root
+    if data_root == 'auto':
+        data_root = f"data/mvtec_{img_resolution}"
+    data_dir = f"{data_root}/{class_name}/train/good"  # not used directly; Data() will override per split
     save = './workspace/eval'  # lightweight temp dir for Checkpoint utilities
     data_range = ''
     test_every = 1
@@ -236,7 +331,7 @@ def main(argv=None):
 
     # Add roots for evaluation convenience
     opt.model_name = model_type
-    opt.data_root = args.data_root
+    opt.data_root = data_root
 
     # Determine output directory
     if args.output_dir:

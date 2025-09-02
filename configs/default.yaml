@@ -8,7 +8,7 @@ batch-size: 4
 lr: 0.0002
 no-augment: false
 device: auto
-data-root: data/mvtec_128
+data-root: auto
 save-dir: ./workspace/experiment
 pretrain: false
 test-only: false

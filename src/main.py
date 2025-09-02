@@ -186,16 +186,16 @@ def parse_args(argv=None):
     # Main parser with all options
     parser = argparse.ArgumentParser(description='Training/Evaluation entrypoint', parents=[pre_parser])
     parser.add_argument('--model-type', type=str, default='drct', choices=['drct', 'drn-l'])
-    parser.add_argument('--dataset', type=str, default='mvtec', choices=['mvtec', 'gkd', 'gkd_large'])
-    parser.add_argument('--classe', type=str, default='grid')
-    parser.add_argument('--scale', type=int, default=4)
-    parser.add_argument('--resolution', type=int, default=128)
+    parser.add_argument('--dataset', type=str, default='mvtec', choices=['mvtec'])
+    parser.add_argument('--classe', type=str, default='grid', choices=['grid', 'carpet'])
+    parser.add_argument('--scale', type=int, default=4, choices=[4, 8])
+    parser.add_argument('--resolution', type=int, default=128, choices=[32, 64, 128, 256])
     parser.add_argument('--epochs', type=int, default=2)
     parser.add_argument('--batch-size', type=int, default=4)
     parser.add_argument('--lr', type=float, default=2e-4)
     parser.add_argument('--no-augment', action='store_true')
     parser.add_argument('--device', type=str, default='auto', choices=['auto', 'cuda', 'mps', 'cpu'])
-    parser.add_argument('--data-root', type=str, default='data/mvtec_128')
+    parser.add_argument('--data-root', type=str, default='auto')
     parser.add_argument('--save-dir', type=str, default='./workspace/experiment')
     parser.add_argument('--pretrain', action='store_true')
     parser.add_argument('--test-only', action='store_true')
@@ -549,7 +549,10 @@ if __name__ == "__main__":
 
     # Data/save paths (simple local defaults)
     if ds == 'mvtec':
-        data_dir = f"{args.data_root}/{class_name}/train/good"
+        data_root = args.data_root
+        if data_root == 'auto':
+            data_root = f"data/mvtec_{img_resolution}"
+        data_dir = f"{data_root}/{class_name}/train/good"
     elif ds == 'gkd':
         data_dir = f"workspace/gkd/{class_name}/train/HR_{img_resolution}"
     elif ds == 'gkd_large':
