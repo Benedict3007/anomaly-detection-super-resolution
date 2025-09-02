@@ -14,7 +14,7 @@ from src.data import Data
 from src.model import Model
 from src.loss import Loss
 from src.checkpoint import Checkpoint
-from src.helpers import calculate_ssim, calculate_psnr
+from src.metrics import ssim_numpy as calculate_ssim, psnr_numpy as calculate_psnr
 
 
 def parse_args(argv=None):

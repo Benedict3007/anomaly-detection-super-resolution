@@ -16,6 +16,7 @@ from PIL import Image
 from sklearn.metrics import roc_curve, auc, roc_auc_score
 from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import peak_signal_noise_ratio as psnr
+from src.metrics import ssim_numpy as unified_ssim_numpy, psnr_numpy as unified_psnr_numpy
 from dataclasses import dataclass
 from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, f1_score
@@ -107,9 +108,16 @@ def calculate_ssim(original, reconstructed, win_size):
     # Determine data range based on dtype; assume float images are in [0,1]
     dr = 1.0 if np.issubdtype(np.asarray(original).dtype, np.floating) else 255
     if len(original.shape) == 2 and len(reconstructed.shape) == 2:
-        return ssim(original, reconstructed, win_size=win_size, data_range=dr)
+        # fallback to a unified implementation to avoid dependency variance
+        try:
+            return ssim(original, reconstructed, win_size=win_size, data_range=dr)
+        except Exception:
+            return unified_ssim_numpy(original, reconstructed, win_size, data_range=dr)
     elif len(original.shape) == 3 and len(reconstructed.shape) == 3:
-        return ssim(original, reconstructed, win_size=win_size, data_range=dr, channel_axis=-1)
+        try:
+            return ssim(original, reconstructed, win_size=win_size, data_range=dr, channel_axis=-1)
+        except Exception:
+            return unified_ssim_numpy(original, reconstructed, win_size, data_range=dr)
     else:
         raise ValueError("Input images must have the same dimensions (both 2D or both 3D)")
         
@@ -120,7 +128,10 @@ def calculate_mse(original, reconstructed):
 
 def calculate_psnr(original, reconstructed):
     dr = 1.0 if np.issubdtype(np.asarray(original).dtype, np.floating) else 255
-    return psnr(original, reconstructed, data_range=dr)
+    try:
+        return psnr(original, reconstructed, data_range=dr)
+    except Exception:
+        return unified_psnr_numpy(np.asarray(original), np.asarray(reconstructed), data_range=dr)
 
 def min_max_scaling(image_array):
     min_val = np.min(image_array)

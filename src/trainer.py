@@ -14,6 +14,7 @@ from decimal import Decimal
 from tqdm import tqdm
 from src.data import Data
 from src.helpers import analyze_window_sizes, analyze_window_sizes_gkd, process_images, process_gkd_images 
+from src.metrics import psnr_torch, ssim_torch
 from PIL import Image
 from sklearn.metrics import roc_curve, auc, roc_auc_score
 
@@ -95,71 +96,10 @@ def make_dual_scheduler(opt, dual_optimizers):
     return dual_scheduler
 
 def calc_psnr(sr, hr, scale, rgb_range, benchmark=False):
-    if sr.size(-2) > hr.size(-2) or sr.size(-1) > hr.size(-1):
-        print("the dimension of sr image is not equal to hr's! ")
-        sr = sr[:,:,:hr.size(-2),:hr.size(-1)]
-    diff = (sr - hr).data.div(rgb_range)
-
-    if benchmark:
-        shave = scale
-        if diff.size(1) > 1:
-            convert = diff.new(1, 3, 1, 1)
-            convert[0, 0, 0, 0] = 65.738
-            convert[0, 1, 0, 0] = 129.057
-            convert[0, 2, 0, 0] = 25.064
-            diff.mul_(convert).div_(256)
-            diff = diff.sum(dim=1, keepdim=True)
-    else:
-        shave = scale + 6
-
-    valid = diff[:, :, shave:-shave, shave:-shave]
-    mse = valid.pow(2).mean()
-
-    return -10 * math.log10(mse)
+    return psnr_torch(sr, hr, rgb_range)
 
 def calc_ssim(sr, hr, scale, rgb_range, benchmark=False):
-    """Calculate SSIM (structural similarity) for the super-resolved and high-resolution images."""
-    if sr.size(-2) > hr.size(-2) or sr.size(-1) > hr.size(-1):
-        sr = sr[:, :, :hr.size(-2), :hr.size(-1)]
-    
-    sr = sr.div(rgb_range).clamp(0, 1)
-    hr = hr.div(rgb_range).clamp(0, 1)
-
-    shave = scale if benchmark else scale + 6
-
-    if sr.size(-1) > 2 * shave:
-        sr = sr[..., shave:-shave, shave:-shave]
-        hr = hr[..., shave:-shave, shave:-shave]
-    else:
-        sr = sr[..., 1:-1, 1:-1]
-        hr = hr[..., 1:-1, 1:-1]
-
-    if sr.size(1) > 1:
-        convert = torch.tensor([[65.738, 129.057, 25.064]], dtype=sr.dtype, device=sr.device).view(1, 3, 1, 1) / 256
-        sr = (sr * convert).sum(dim=1, keepdim=True)
-        hr = (hr * convert).sum(dim=1, keepdim=True)
-
-    C1 = (0.01 * 255) ** 2
-    C2 = (0.03 * 255) ** 2
-
-    kernel = torch.ones(1, 1, 11, 11, dtype=sr.dtype, device=sr.device) / 121
-
-    sr = sr.to(hr.dtype)  # Ensure sr and hr are the same type
-    kernel = kernel.to(hr.dtype)  # Ensure kernel is the same type as hr
-
-    mu1 = F.conv2d(sr, kernel, padding=5)
-    mu2 = F.conv2d(hr, kernel, padding=5)
-
-    mu1_sq = mu1 ** 2
-    mu2_sq = mu2 ** 2
-    mu1_mu2 = mu1 * mu2
-
-    sigma1_sq = F.conv2d(sr ** 2, kernel, padding=5) - mu1_sq
-    sigma2_sq = F.conv2d(hr ** 2, kernel, padding=5) - mu2_sq
-    sigma12 = F.conv2d(sr * hr, kernel, padding=5) - mu1_mu2
-
-    ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
-    return ssim_map.mean().item()
+    return ssim_torch(sr, hr, rgb_range, win_size=11)
 
 def print_gpu_memory_usage():
     # print(f"Memory Allocated: {torch.cuda.memory_allocated() / 1024 ** 2:.2f} MB")

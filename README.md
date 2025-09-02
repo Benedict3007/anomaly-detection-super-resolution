@@ -94,17 +94,54 @@ python run.py test
 - **Structure**: Extract to `data/mvtec/` with train/test splits
 - **Note**: This dataset is not publicly downloadable via scripts - manual download required
 
-### Training (Coming Soon)
+### Training
 
-The training pipeline is currently being restructured. Once complete, you'll be able to run:
+You can train the SR models via the main CLI. Key arguments:
 
 ```bash
-# Train DRN-L model on MVTec carpet dataset
-python src/main.py --dataset mvtec --class-name carpet --model drn-l --epochs 100
+# DRCT (Transformer SR) on MVTec grid, 128px HR, scale x4
+python src/main.py \
+  --model-type drct \
+  --dataset mvtec \
+  --classe grid \
+  --resolution 128 \
+  --scale 4 \
+  --epochs 100 \
+  --batch-size 4
 
-# Train DRCT model on MVTec grid dataset  
-python src/main.py --dataset mvtec --class-name grid --model drct --epochs 500
+# DRN-L (Residual SR) on MVTec carpet, RGB
+python src/main.py \
+  --model-type drn-l \
+  --dataset mvtec \
+  --classe carpet \
+  --resolution 128 \
+  --scale 4 \
+  --epochs 100 \
+  --batch-size 4
+
+# Optional: load defaults from YAML
+python src/main.py --config configs/default.yaml --epochs 50
+
+# Device override examples
+python src/main.py --device cpu
+python src/main.py --device mps   # Apple Silicon
 ```
+
+### Evaluation
+
+Evaluate a saved run directory or a specific checkpoint using the standalone evaluator:
+
+```bash
+# From a run directory (auto-detects settings)
+python -m src.evaluate --run-dir workspace/experiment/drct/<your_run_dir>
+
+# Or with an explicit checkpoint
+python -m src.evaluate --checkpoint /path/to/model_best.pt --dataset mvtec --classe grid --resolution 128 --scale 4
+```
+
+Note:
+- Training (`src/main.py`) validates super-resolution quality on a good-only validation set using PSNR/SSIM and does not compute anomaly AUC.
+- Anomaly AUC is computed only via the evaluator (`src/evaluate.py`) on the test set (good + bad).
 
 ---
 
@@ -130,26 +167,29 @@ python src/main.py --dataset mvtec --class-name grid --model drct --epochs 500
 └── test_basic.py          # Basic functionality tests
 ```
 
+### Architecture Overview (brief)
+
+- `src/main.py`: CLI entry for training and config parsing; validates PSNR/SSIM on val.
+- `src/data.py`: `SRData` dataset and `Data` loaders; MVTec-specific wrapper.
+- `src/model.py`: Model wrapper, device handling, checkpoint load/save, `DownBlock`.
+- `src/drn.py`: DRN-L super-resolution architecture.
+- `src/drct.py`: Transformer-based DRCT architecture.
+- `src/trainer.py`: Training/eval loop, optimizers, schedulers, AMP handling.
+- `src/loss.py`: Loss factory (L1/MSE/PSNR/SSIM).
+- `src/checkpoint.py`: Run directory, logging, image saving, metric plotting.
+- `src/metrics.py`: Unified SSIM/PSNR utilities (numpy and torch).
+- `src/evaluate.py`: Standalone evaluation entrypoint for saved checkpoints.
+
 ---
 
-## 🔧 Development Status
+## 🔧 Development
 
-**Current Status:** 🟡 Basic Setup Complete - Training Pipeline in Development
-
-- ✅ **Project Structure**: Clean, professional organization
-- ✅ **Dependencies**: Fixed requirements and setup
-- ✅ **CLI Interface**: Basic command-line tools working
-- ✅ **Testing**: Basic functionality tests implemented
-- 🔄 **Training Pipeline**: Being restructured for production use
-- 🔄 **Model Implementation**: Core models need integration
-- 🔄 **Data Loading**: Dataset handling needs implementation
-
-**Next Steps:**
-1. Implement data loading pipeline
-2. Integrate DRN-L and DRCT models
-3. Complete training loop
-4. Add configuration management
-5. Implement evaluation metrics
+- Run tests: `python run.py test`
+- Useful Make targets:
+  - `make setup` → create local dirs
+  - `make test` → smoke tests
+  - `make lint` → flake8 (optional)
+  - `make format` → black+isort (optional)
 
 ---
 

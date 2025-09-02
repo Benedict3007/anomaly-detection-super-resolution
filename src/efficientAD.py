@@ -1,3 +1,11 @@
+"""
+LEGACY/EXPERIMENTAL MODULE
+
+This script implements an EfficientAD-style baseline used during exploration.
+It is not part of the primary SR-based training pipeline. Retained for reference
+and potential follow-up experiments.
+"""
+
 import numpy as np
 import tifffile
 import torch

@@ -1,3 +1,9 @@
+This directory is gitignored. Place datasets here.
+
+MVTec AD (manual download)
+- Download from: https://www.mvtec.com/company/research/datasets/mvtec-ad/
+- Extract to `data/mvtec/` with classes like `carpet/` and `grid/`.
+- For resized splits, use `prepare_mvtec_data_v2.py` as needed.
 # Data Directory
 
 This directory is intended for storing the datasets required by the project.

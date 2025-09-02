@@ -10,4 +10,6 @@ __author__ = "Benedict Druegh"
 __description__ = "Industrial anomaly detection using Transformer-based super-resolution models"
 
 # Keep package metadata only; avoid importing submodules at package import time
-__all__ = []
+from typing import List
+
+__all__: List[str] = []

@@ -42,7 +42,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "anomaly-detection=main:main",
+            "anomaly-detection=src.main:main",
         ],
     },
 )

@@ -1,3 +1,10 @@
+"""
+LEGACY/EXPERIMENTAL MODULE
+
+Utility used for early evaluation and specificity calculations during research.
+Not required by the main SR pipeline. Kept for reproducibility of thesis results.
+"""
+
 import torch
 import math
 import matplotlib

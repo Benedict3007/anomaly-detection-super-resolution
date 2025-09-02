@@ -1,0 +1,40 @@
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+no_implicit_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+exclude = '(src/(drct|drn|efficientAD|recall_1|helpers)\.py)$'
+files = ["src/main.py"]
+plugins = []
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+
+[tool.flake8]
+max-line-length = 120
+extend-exclude = [
+  "src/drct.py",
+  "src/drn.py",
+  "src/efficientAD.py",
+  "src/recall_1.py",
+  "src/helpers.py",
+  "src/trainer.py",
+  "src/evaluate.py",
+]
+per-file-ignores = [
+  "src/main.py:E225,E261,E501",
+  "src/model.py:E501",
+  "src/loss.py:E501",
+  "src/checkpoint.py:E501",
+  "src/data.py:E501",
+]
+
