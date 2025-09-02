@@ -46,6 +46,32 @@ def setup_project():
     print("✅ Project setup complete!")
     return True
 
+def clean_runs():
+    """Delete previous training runs and results directories."""
+    targets = [
+        Path("workspace/experiment"),
+        Path("workspace/images"),
+        Path("results"),
+        Path("logs/slurm"),
+    ]
+    removed_any = False
+    for p in targets:
+        if p.exists():
+            # Use rmtree via shutil for directories; unlink for files
+            if p.is_dir():
+                import shutil
+                shutil.rmtree(p)
+            else:
+                p.unlink()
+            print(f"🧹 Removed {p}")
+            removed_any = True
+        else:
+            print(f"ℹ️  Skipped (not found): {p}")
+    if not removed_any:
+        print("Nothing to clean.")
+    else:
+        print("✅ Cleanup complete.")
+
 def show_help():
     """Show help information."""
     help_text = """
@@ -54,12 +80,14 @@ def show_help():
 Available commands:
   setup     - Initialize project structure and sample data
   test      - Run basic tests to verify setup
+  clean     - Delete previous training runs and results (workspace/experiment, workspace/images, results)
   help      - Show this help message
 
 Examples:
   python run.py setup
   python run.py test
   python run.py help
+  python run.py clean
 
 For training (when implemented):
   python src/main.py --dataset mvtec --class-name carpet --model drn-l
@@ -75,7 +103,7 @@ def main():
     
     parser.add_argument(
         "command",
-        choices=["setup", "test", "help"],
+        choices=["setup", "test", "clean", "help"],
         help="Command to run"
     )
     
@@ -90,6 +118,8 @@ def main():
             test_basic.main()
         except ImportError:
             print("❌ Test script not found. Run 'python run.py setup' first.")
+    elif args.command == "clean":
+        clean_runs()
     elif args.command == "help":
         show_help()
     else:

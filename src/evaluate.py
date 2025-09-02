@@ -5,6 +5,8 @@ import sys
 import yaml  # type: ignore[import-untyped]
 import numpy as np
 from sklearn.metrics import roc_auc_score  # type: ignore[import-untyped]
+from pathlib import Path
+from PIL import Image
 
 from src.main import DRN, DRCT, setup_opt_drn, setup_opt_drct
 from src.data import Data
@@ -30,6 +32,8 @@ def parse_args(argv=None):
     p.add_argument('--run-dir', type=str, default='')
     p.add_argument('--checkpoint', type=str, default='')
     p.add_argument('--batch-size', type=int, default=1)
+    p.add_argument('--output-dir', type=str, default='')
+    p.add_argument('--save-images', action='store_true', default=True)
     p.add_argument('--workers', type=int, default=0 if sys.platform == 'darwin' else 4)
 
     if pre_args.config and os.path.isfile(pre_args.config):
@@ -53,7 +57,7 @@ def resolve_checkpoint(args):
     raise FileNotFoundError('Please provide --checkpoint or a valid --run-dir containing model/*.pt')
 
 
-def evaluate_on_test(opt, checkpoint_model_path):
+def evaluate_on_test(opt, checkpoint_model_path, output_dir: str, save_images: bool):
     # Build test loaders for good and bad
     def build_loader(split):
         eopt = copy.deepcopy(opt)
@@ -101,9 +105,26 @@ def evaluate_on_test(opt, checkpoint_model_path):
     y_true = []
     sr_np = []
     hr_np = []
+    filenames = []
+    splits = []
 
-    def collect_pairs(dloader, label):
-        for _, (lr, hr, _) in enumerate(dloader):
+    # Create output directories if saving
+    if save_images:
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    def save_sr_image(sr_tensor, name: str, split: str, scale_value: int):
+        # Convert tensor to uint8 image and save
+        sr_u8 = sr_tensor[0].detach().mul(255 / opt.rgb_range).clamp(0, 255).byte().permute(1, 2, 0).cpu().numpy()
+        out_dir = Path(output_dir) / split / f"x{scale_value}"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        if sr_u8.shape[2] == 1:
+            img = Image.fromarray(sr_u8[:, :, 0], mode='L')
+        else:
+            img = Image.fromarray(sr_u8, mode='RGB')
+        img.save(str(out_dir / f"{name}.png"))
+
+    def collect_pairs(dloader, label, split_name: str):
+        for _, (lr, hr, fname) in enumerate(dloader):
             if hr.nelement() == 1:
                 continue
             lr_t, hr_t = t.prepare(lr, hr)
@@ -117,9 +138,15 @@ def evaluate_on_test(opt, checkpoint_model_path):
             y_true.append(label)
             sr_np.append(sr_u8)
             hr_np.append(hr_u8)
+            name = fname[0] if isinstance(fname, (list, tuple)) else str(fname)
+            filenames.append(name)
+            splits.append(split_name)
+            if save_images:
+                scale_value = opt.scale[-1] if isinstance(opt.scale, list) else int(opt.scale)
+                save_sr_image(sr, name, split_name, scale_value)
 
-    collect_pairs(loader_good, 0)
-    collect_pairs(loader_bad, 1)
+    collect_pairs(loader_good, 0, 'good')
+    collect_pairs(loader_bad, 1, 'bad')
 
     if len(set(y_true)) < 2:
         print('Test set lacks both classes; AUC not available')
@@ -211,7 +238,15 @@ def main(argv=None):
     opt.model_name = model_type
     opt.data_root = args.data_root
 
-    evaluate_on_test(opt, ckpt_path)
+    # Determine output directory
+    if args.output_dir:
+        out_dir = args.output_dir
+    elif args.run_dir:
+        out_dir = os.path.join(args.run_dir, 'eval_results')
+    else:
+        out_dir = './workspace/eval_results'
+
+    evaluate_on_test(opt, ckpt_path, out_dir, args.save_images)
 
 
 if __name__ == "__main__":
