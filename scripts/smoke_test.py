@@ -86,7 +86,7 @@ def run_training(data_root: Path, epochs: int = 5) -> Optional[Path]:
     """Run DRCT training and return the created run directory if successful."""
     cmd = [
         sys.executable,
-        str(PROJECT_ROOT / "src" / "main.py"),
+        "-m", "src.main",
         "--model-type", "drct",
         "--dataset", "mvtec",
         "--classe", "grid",
@@ -125,7 +125,7 @@ def run_evaluation(run_dir: Path) -> int:
     """
     cmd = [
         sys.executable,
-        str(PROJECT_ROOT / "src" / "evaluate.py"),
+        "-m", "src.evaluate",
         "--run-dir", str(run_dir),
         "--save-images",
     ]
