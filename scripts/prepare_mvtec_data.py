@@ -42,7 +42,7 @@ def save_image_pair(hr_image, lr_image, hr_path, lr_path):
 
 def process_training_data(source_dir, train_target_dir, val_target_dir, scale_factors=(4,), target_hr=(128, 128), val_ratio=0.1, seed=42):
     """Process training data: create train/val splits, resize to target_hr, and create LR versions."""
-    print(f"📁 Processing training data: {source_dir.name}")
+    print(f"Processing training data: {source_dir.name}")
 
     # Prepare directory maps for train and val
     def make_dirs(base_dir):
@@ -90,11 +90,11 @@ def process_training_data(source_dir, train_target_dir, val_target_dir, scale_fa
     if val_size > 0:
         save_split(val_files, val_dirs, "Processing val images")
 
-    print(f"  ✅ Created {len(train_files)} train pairs and {len(val_files)} val pairs")
+    print(f"  Created {len(train_files)} train pairs and {len(val_files)} val pairs")
 
 def process_test_data(source_dir, target_dir, scale_factors=(4,), target_hr=(128, 128)):
     """Process test data: organize into good/bad structure for all requested scales at target_hr size."""
-    print(f"📁 Processing test data: {source_dir.name}")
+    print(f"Processing test data: {source_dir.name}")
     
     # Create target directories
     good_hr_dir = target_dir / "good" / "HR"
@@ -155,12 +155,12 @@ def process_test_data(source_dir, target_dir, scale_factors=(4,), target_hr=(128
     good_count = len(list(good_hr_dir.glob("*.png")))
     bad_count = len(list(bad_hr_dir.glob("*.png")))
     
-    print(f"  ✅ Good test images: {good_count}")
-    print(f"  ✅ Bad test images: {bad_count}")
+    print(f"  Good test images: {good_count}")
+    print(f"  Bad test images: {bad_count}")
 
 def prepare_mvtec_dataset(source_base="data/mvtec", target_base="data/mvtec_128", scale_factors=(4,), target_hr=(128, 128), val_ratio=0.1, seed=42):
     """Prepare the complete MVTec dataset for chosen HR size with selected LR scales and a train/val split."""
-    print(f"🚀 Preparing MVTec AD dataset for {target_hr[0]}x{target_hr[1]} training")
+    print(f"Preparing MVTec AD dataset for {target_hr[0]}x{target_hr[1]} training")
     print("=" * 60)
     
     source_base = Path(source_base)
@@ -169,13 +169,13 @@ def prepare_mvtec_dataset(source_base="data/mvtec", target_base="data/mvtec_128"
     # Remove existing target directory
     if target_base.exists():
         shutil.rmtree(target_base)
-        print("🧹 Cleaned existing target directory")
+        print("Cleaned existing target directory")
     
     # Process each class
     classes = ["carpet", "grid"]
     
     for class_name in classes:
-        print(f"\n🔧 Processing class: {class_name}")
+        print(f"\nProcessing class: {class_name}")
         
         # Source paths
         train_source = source_base / class_name / "train" / "good"
@@ -190,52 +190,52 @@ def prepare_mvtec_dataset(source_base="data/mvtec", target_base="data/mvtec_128"
         if train_source.exists():
             process_training_data(train_source, train_target, val_target, scale_factors, target_hr=target_hr, val_ratio=val_ratio, seed=seed)
         else:
-            print(f"  ❌ Training data not found: {train_source}")
+            print(f"  ERROR: Training data not found: {train_source}")
         
         # Process test data
         if test_source.exists():
             process_test_data(test_source, test_target, scale_factors, target_hr=target_hr)
         else:
-            print(f"  ❌ Test data not found: {test_source}")
+            print(f"  ERROR: Test data not found: {test_source}")
     
-    print(f"\n✅ Dataset preparation complete!")
-    print(f"📁 Output directory: {target_base}")
-    print(f"🔍 Check the structure with: find {target_base} -type d | sort")
+    print(f"\nDataset preparation complete!")
+    print(f"Output directory: {target_base}")
+    print(f"Check the structure with: find {target_base} -type d | sort")
 
 def verify_dataset_structure(base_dir):
     """Verify the prepared dataset structure."""
-    print(f"\n🔍 Verifying dataset structure: {base_dir}")
+    print(f"\nVerifying dataset structure: {base_dir}")
     
     base_path = Path(base_dir)
     classes = ["carpet", "grid"]
     
     for class_name in classes:
-        print(f"\n  📁 {class_name}/")
+        print(f"\n  {class_name}/")
         
         # Check training data
         train_hr = base_path / class_name / "train" / "good" / "HR"
         if train_hr.exists():
             train_count = len(list(train_hr.glob("*.png")))
-            print(f"    ✅ train/good/HR: {train_count} images")
+            print(f"    train/good/HR: {train_count} images")
         else:
-            print(f"    ❌ train/good/HR: missing")
+            print(f"    ERROR: train/good/HR: missing")
         # List LR_* present and counts
         lr_dirs = sorted((base_path / class_name / "train" / "good").glob("LR_*"))
         for lr_dir in lr_dirs:
             lr_count = len(list(lr_dir.glob("*.png")))
-            print(f"    ✅ train/good/{lr_dir.name}: {lr_count} images")
+            print(f"    train/good/{lr_dir.name}: {lr_count} images")
         
         # Check validation data
         val_hr = base_path / class_name / "val" / "good" / "HR"
         if val_hr.exists():
             val_count = len(list(val_hr.glob("*.png")))
-            print(f"    ✅ val/good/HR: {val_count} images")
+            print(f"    val/good/HR: {val_count} images")
         else:
-            print(f"    ❌ val/good/HR: missing")
+            print(f"    ERROR: val/good/HR: missing")
         lr_val_dirs = sorted((base_path / class_name / "val" / "good").glob("LR_*"))
         for lr_dir in lr_val_dirs:
             lr_count = len(list(lr_dir.glob("*.png")))
-            print(f"    ✅ val/good/{lr_dir.name}: {lr_count} images")
+            print(f"    val/good/{lr_dir.name}: {lr_count} images")
 
         # Check test data
         test_good_hr = base_path / class_name / "test" / "good" / "HR"
@@ -243,17 +243,17 @@ def verify_dataset_structure(base_dir):
         
         if test_good_hr.exists():
             good_count = len(list(test_good_hr.glob("*.png")))
-            print(f"    ✅ test/good/HR: {good_count} images")
+            print(f"    test/good/HR: {good_count} images")
         else:
-            print(f"    ❌ test/good/HR: missing")
+            print(f"    ERROR: test/good/HR: missing")
             
         if test_bad_hr.exists():
             bad_count = len(list(test_bad_hr.glob("*.png")))
-            print(f"    ✅ test/bad/HR: {bad_count} images")
+            print(f"    test/bad/HR: {bad_count} images")
         else:
-            print(f"    ❌ test/bad/HR: missing")
+            print(f"    ERROR: test/bad/HR: missing")
     
-    print("✅ Dataset verification complete!")
+    print("Dataset verification complete!")
 
 def main():
     """Main function."""
@@ -264,24 +264,24 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
-    print(f"🎯 MVTec AD Dataset Preparation ({args.hr_size}x{args.hr_size})")
+    print(f"MVTec AD Dataset Preparation ({args.hr_size}x{args.hr_size})")
     print("=" * 60)
 
     # Check if source data exists
     source_base = Path("data/mvtec")
     if not source_base.exists():
-        print("❌ Source data not found. Please ensure MVTec dataset is in data/mvtec/")
+        print("ERROR: Source data not found. Please ensure MVTec dataset is in data/mvtec/")
         return
 
     # Compute scale factors
     try:
         user_scales = sorted({int(s.strip()) for s in args.scales.split(',') if s.strip()})
     except ValueError:
-        print("❌ Invalid --scales. Use comma-separated integers from {4,8}")
+        print("ERROR: Invalid --scales. Use comma-separated integers from {4,8}")
         return
     for s in user_scales:
         if s not in (4, 8):
-            print("❌ Only scales 4 and/or 8 are supported")
+            print("ERROR: Only scales 4 and/or 8 are supported")
             return
     scales = set(user_scales)
     # Progressive LR is permanent: always include LR_2; if 8 requested, ensure LR_4 too

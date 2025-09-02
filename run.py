@@ -26,24 +26,24 @@ def create_mvtec_structure():
         (class_dir / "test").mkdir(exist_ok=True)
         (class_dir / "ground_truth").mkdir(exist_ok=True)
     
-    print("✅ Created MVTec folder structure")
-    print("📁 Note: Dataset must be downloaded manually from https://www.mvtec.com/company/research/datasets/mvtec-ad/")
+    print("Created MVTec folder structure")
+    print("Note: Dataset must be downloaded manually from https://www.mvtec.com/company/research/datasets/mvtec-ad/")
     return True
 
 def setup_project():
     """Setup the project structure."""
-    print("🔧 Setting up project structure...")
+    print("Setting up project structure...")
     
     # Create necessary directories
     dirs = ["results", "logs", "checkpoints"]
     for dir_name in dirs:
         Path(dir_name).mkdir(exist_ok=True)
-        print(f"  ✅ Created {dir_name}/")
+        print(f"  Created {dir_name}/")
     
     # Create MVTec folder structure
     create_mvtec_structure()
     
-    print("✅ Project setup complete!")
+    print("Project setup complete!")
     return True
 
 def clean_runs():
@@ -63,19 +63,19 @@ def clean_runs():
                 shutil.rmtree(p)
             else:
                 p.unlink()
-            print(f"🧹 Removed {p}")
+            print(f"Removed {p}")
             removed_any = True
         else:
-            print(f"ℹ️  Skipped (not found): {p}")
+            print(f"Skipped (not found): {p}")
     if not removed_any:
         print("Nothing to clean.")
     else:
-        print("✅ Cleanup complete.")
+        print("Cleanup complete.")
 
 def show_help():
     """Show help information."""
     help_text = """
-🚀 Anomaly Detection Super-Resolution Project
+Anomaly Detection Super-Resolution Project
 
 Available commands:
   setup     - Initialize project structure and sample data
@@ -112,18 +112,18 @@ def main():
     if args.command == "setup":
         setup_project()
     elif args.command == "test":
-        print("🧪 Running tests...")
+        print("Running tests...")
         try:
             import test_basic
             test_basic.main()
         except ImportError:
-            print("❌ Test script not found. Run 'python run.py setup' first.")
+            print("ERROR: Test script not found. Run 'python run.py setup' first.")
     elif args.command == "clean":
         clean_runs()
     elif args.command == "help":
         show_help()
     else:
-        print(f"❌ Unknown command: {args.command}")
+        print(f"ERROR: Unknown command: {args.command}")
         show_help()
         sys.exit(1)
 

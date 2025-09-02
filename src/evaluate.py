@@ -196,9 +196,9 @@ def evaluate_on_test(opt, checkpoint_model_path, output_dir: str, save_images: b
         out_dir = Path(output_dir) / split / f"x{scale_value}"
         out_dir.mkdir(parents=True, exist_ok=True)
         if sr_u8.shape[2] == 1:
-            img = Image.fromarray(sr_u8[:, :, 0], mode='L')
+            img = Image.fromarray(sr_u8[:, :, 0])
         else:
-            img = Image.fromarray(sr_u8, mode='RGB')
+            img = Image.fromarray(sr_u8)
         img.save(str(out_dir / f"{name}.png"))
 
     def collect_pairs(dloader, label, split_name: str):

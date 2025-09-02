@@ -7,17 +7,17 @@ An investigation into the novel application of Super-Resolution (SR) models, inc
 
 ---
 
-## 🎯 Abstract
+## Abstract
 
 In industrial manufacturing, reliably detecting visual anomalies is critical for quality control, but state-of-the-art methods often require extensive labeled data. This project introduces a novel, unsupervised approach by repurposing Super-Resolution (SR) models for anomaly detection. The core hypothesis is that models trained exclusively on anomaly-free images will fail to accurately reconstruct anomalous regions. By training two advanced SR models (DRN and the Transformer-based DRCT) on the MVTec AD dataset, this thesis measures the reconstruction error to distinguish between normal and defective samples. While the specialized EfficientAD model showed more robust overall performance, the SR-based approach achieved comparable, and in some cases near-equal, performance, validating its potential as a viable alternative for specific industrial use cases.
 
-## ✨ Key Features & Skills Demonstrated
+## Key Features & Skills Demonstrated
 
 *   **Technologies:** Python, PyTorch, Pandas, Scikit-learn, Matplotlib, JupyterLab
 *   **Infrastructure:** **NVIDIA H100 GPUs, Slurm Workload Manager, Bash Scripting**
 *   **Concepts:** Deep Learning, Unsupervised Learning, Anomaly Detection, **Computer Vision**, **Generative Models**, Super-Resolution, Transformers, High-Performance Computing (HPC)
 
-## 📊 Key Result
+## Key Result
 
 The chart below compares the anomaly detection performance (AUC Score) of the proposed Super-Resolution models (DRN-L, DRCT-L) against the state-of-the-art EfficientAD model across various industrial datasets and image configurations.
 
@@ -27,7 +27,7 @@ The chart below compares the anomaly detection performance (AUC Score) of the pr
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -145,7 +145,7 @@ Note:
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 .
@@ -182,7 +182,7 @@ Note:
 
 ---
 
-## 🔧 Development
+## Development
 
 - Run tests: `python run.py test`
 - Useful Make targets:
@@ -193,7 +193,7 @@ Note:
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 - **Installation Guide**: See Quick Start section above
 - **API Reference**: Coming soon as training pipeline is completed
@@ -202,19 +202,19 @@ Note:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 This project is currently in active development. Contributions are welcome once the basic training pipeline is complete.
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 This work was conducted as part of the Master's Thesis for the Information Systems Engineering program at University of Applied Sciences Aachen.
 
@@ -222,7 +222,7 @@ Special thanks to the authors of the DRN, DRCT, and EfficientAD papers.
 
 ---
 
-## 📞 Support
+## Support
 
 If you encounter issues:
 

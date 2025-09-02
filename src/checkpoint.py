@@ -116,10 +116,10 @@ class Checkpoint():
         # Convert numpy array to PIL Image
         if ndarr.shape[2] == 1:
             # Grayscale
-            im = Image.fromarray(ndarr[:,:,0], mode='L')
+            im = Image.fromarray(ndarr[:,:,0])
         else:
             # RGB
-            im = Image.fromarray(ndarr, mode='RGB')
+            im = Image.fromarray(ndarr)
         
         # Save the image
         im.save('{}.png'.format(filename))

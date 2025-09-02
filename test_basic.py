@@ -61,7 +61,7 @@ def test_main_script():
 
 def main():
     """Run all tests."""
-    print("🧪 Running basic project tests...\n")
+    print("Running basic project tests...\n")
     
     tests = [
         ("Basic imports", test_imports),
@@ -76,17 +76,17 @@ def main():
         print(f"Testing: {test_name}")
         if test_func():
             passed += 1
-            print(f"✅ {test_name} passed\n")
+            print(f"{test_name} passed\n")
         else:
-            print(f"❌ {test_name} failed\n")
+            print(f"ERROR: {test_name} failed\n")
     
-    print(f"📊 Test Results: {passed}/{total} tests passed")
+    print(f"Test Results: {passed}/{total} tests passed")
     
     if passed == total:
-        print("🎉 All tests passed! Basic setup is working.")
+        print("All tests passed! Basic setup is working.")
         return True
     else:
-        print("⚠️  Some tests failed. Check the errors above.")
+        print("Some tests failed. Check the errors above.")
         return False
 
 if __name__ == "__main__":

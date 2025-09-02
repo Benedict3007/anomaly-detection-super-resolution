@@ -40,9 +40,4 @@ setup(
             "ipykernel>=6.0.0",
         ],
     },
-    entry_points={
-        "console_scripts": [
-            "anomaly-detection=src.main:main",
-        ],
-    },
 )
