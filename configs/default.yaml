@@ -1,0 +1,16 @@
+model-type: drct
+dataset: mvtec
+classe: grid
+scale: 4
+resolution: 128
+epochs: 2
+batch-size: 4
+lr: 0.0002
+no-augment: false
+device: auto
+data-root: data/mvtec_128
+save-dir: ./workspace/experiment
+pretrain: false
+test-only: false
+workers: 0
+

@@ -14,7 +14,7 @@ import shutil
 from pathlib import Path
 from PIL import Image
 import numpy as np
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore[import-untyped]
 
 def resize_image(image_path, target_size=(128, 128), resample=Image.LANCZOS):
     """Resize image to target size."""
@@ -37,38 +37,57 @@ def save_image_pair(hr_image, lr_image, hr_path, lr_path):
     hr_image.save(hr_path)
     lr_image.save(lr_path)
 
-def process_training_data(source_dir, target_dir, scale_factors=(2, 4)):
-    """Process training data: resize to 128x128 and create LR versions for all requested scales."""
+def process_training_data(source_dir, train_target_dir, val_target_dir, scale_factors=(2, 4), val_ratio=0.1, seed=42):
+    """Process training data: create train/val splits, resize to 128x128, and create LR versions."""
     print(f"📁 Processing training data: {source_dir.name}")
-    
-    # Create target directories
-    hr_dir = target_dir / "good" / "HR"
-    hr_dir.mkdir(parents=True, exist_ok=True)
-    lr_dirs = {}
-    for s in scale_factors:
-        lr_dirs[s] = target_dir / "good" / f"LR_{s}"
-        lr_dirs[s].mkdir(parents=True, exist_ok=True)
-    
-    # Get all training images
+
+    # Prepare directory maps for train and val
+    def make_dirs(base_dir):
+        dirs = {
+            'hr': base_dir / "good" / "HR",
+            'lr': {}
+        }
+        dirs['hr'].mkdir(parents=True, exist_ok=True)
+        for s in scale_factors:
+            p = base_dir / "good" / f"LR_{s}"
+            p.mkdir(parents=True, exist_ok=True)
+            dirs['lr'][s] = p
+        return dirs
+
+    train_dirs = make_dirs(train_target_dir)
+    val_dirs = make_dirs(val_target_dir)
+
+    # Get and split image files
     image_files = list(source_dir.glob("*.png"))
     print(f"  Found {len(image_files)} training images")
-    
-    for img_file in tqdm(image_files, desc="Processing training images"):
-        # Resize to 128x128
-        hr_128 = resize_image(img_file, target_size=(128, 128))
-        
-        # Save HR once
-        hr_path = hr_dir / img_file.name
-        hr_path.parent.mkdir(parents=True, exist_ok=True)
-        hr_128.save(hr_path)
+    if len(image_files) == 0:
+        print("  ⚠️  No training images found. Skipping train/val split.")
+        return
 
-        # Create and save LR images for each scale
-        for s in scale_factors:
-            lr_img = create_lr_image(hr_128, scale_factor=s)
-            lr_path = lr_dirs[s] / img_file.name
-            lr_img.save(lr_path)
-    
-    print(f"  ✅ Created {len(image_files)} HR/LR pairs")
+    rng = np.random.RandomState(seed)
+    rng.shuffle(image_files)
+    val_size = int(len(image_files) * float(val_ratio))
+    val_size = max(1, val_size) if len(image_files) > 1 and val_ratio > 0 else 0
+    val_files = image_files[:val_size]
+    train_files = image_files[val_size:]
+
+    def save_split(files, dirs, desc):
+        for img_file in tqdm(files, desc=desc):
+            hr_128 = resize_image(img_file, target_size=(128, 128))
+            hr_path = dirs['hr'] / img_file.name
+            hr_path.parent.mkdir(parents=True, exist_ok=True)
+            hr_128.save(hr_path)
+
+            for s in scale_factors:
+                lr_img = create_lr_image(hr_128, scale_factor=s)
+                lr_path = dirs['lr'][s] / img_file.name
+                lr_img.save(lr_path)
+
+    save_split(train_files, train_dirs, "Processing train images")
+    if val_size > 0:
+        save_split(val_files, val_dirs, "Processing val images")
+
+    print(f"  ✅ Created {len(train_files)} train pairs and {len(val_files)} val pairs")
 
 def process_test_data(source_dir, target_dir, scale_factors=(2, 4)):
     """Process test data: organize into good/bad structure for all requested scales."""
@@ -137,8 +156,8 @@ def process_test_data(source_dir, target_dir, scale_factors=(2, 4)):
     print(f"  ✅ Good test images: {good_count}")
     print(f"  ✅ Bad test images: {bad_count}")
 
-def prepare_mvtec_dataset(source_base="data/mvtec", target_base="data/mvtec_128", scale_factors=(2, 4)):
-    """Prepare the complete MVTec dataset for 128x128 training with LR_2 and LR_4."""
+def prepare_mvtec_dataset(source_base="data/mvtec", target_base="data/mvtec_128", scale_factors=(2, 4), val_ratio=0.1, seed=42):
+    """Prepare the complete MVTec dataset for 128x128 training with LR_2 and LR_4 and a train/val split."""
     print("🚀 Preparing MVTec AD dataset for 128x128 training")
     print("=" * 60)
     
@@ -162,11 +181,12 @@ def prepare_mvtec_dataset(source_base="data/mvtec", target_base="data/mvtec_128"
         
         # Target paths
         train_target = target_base / class_name / "train"
+        val_target = target_base / class_name / "val"
         test_target = target_base / class_name / "test"
         
         # Process training data
         if train_source.exists():
-            process_training_data(train_source, train_target, scale_factors)
+            process_training_data(train_source, train_target, val_target, scale_factors, val_ratio=val_ratio, seed=seed)
         else:
             print(f"  ❌ Training data not found: {train_source}")
         
@@ -213,6 +233,29 @@ def verify_dataset_structure(base_dir):
         else:
             print(f"    ❌ train/good/LR_4: missing")
         
+        # Check validation data
+        val_hr = base_path / class_name / "val" / "good" / "HR"
+        val_lr2 = base_path / class_name / "val" / "good" / "LR_2"
+        val_lr4 = base_path / class_name / "val" / "good" / "LR_4"
+
+        if val_hr.exists():
+            val_count = len(list(val_hr.glob("*.png")))
+            print(f"    ✅ val/good/HR: {val_count} images")
+        else:
+            print(f"    ❌ val/good/HR: missing")
+
+        if val_lr2.exists():
+            v2_count = len(list(val_lr2.glob("*.png")))
+            print(f"    ✅ val/good/LR_2: {v2_count} images")
+        else:
+            print(f"    ❌ val/good/LR_2: missing")
+
+        if val_lr4.exists():
+            v4_count = len(list(val_lr4.glob("*.png")))
+            print(f"    ✅ val/good/LR_4: {v4_count} images")
+        else:
+            print(f"    ❌ val/good/LR_4: missing")
+
         # Check test data
         test_good_hr = base_path / class_name / "test" / "good" / "HR"
         test_bad_hr = base_path / class_name / "test" / "bad" / "HR"

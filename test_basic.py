@@ -50,8 +50,10 @@ def test_main_script():
     """Test that main.py can be imported."""
     try:
         sys.path.insert(0, str(Path(__file__).parent / "src"))
-        from main import parse_args, setup_data_paths
-        print("✅ Main script imports successfully")
+        import importlib
+        m = importlib.import_module("main")
+        assert hasattr(m, "parse_args"), "parse_args not found in main"
+        print("✅ Main script imports successfully and exposes parse_args")
         return True
     except Exception as e:
         print(f"❌ Main script import failed: {e}")
