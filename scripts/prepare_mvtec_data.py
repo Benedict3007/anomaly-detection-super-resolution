@@ -64,7 +64,7 @@ def process_training_data(source_dir, train_target_dir, val_target_dir, scale_fa
     image_files = list(source_dir.glob("*.png"))
     print(f"  Found {len(image_files)} training images")
     if len(image_files) == 0:
-        print("  ⚠️  No training images found. Skipping train/val split.")
+        print("  WARNING No training images found. Skipping train/val split.")
         return
 
     rng = np.random.RandomState(seed)
@@ -306,7 +306,7 @@ def main():
     # Verify structure
     verify_dataset_structure(str(target_base))
     
-    print(f"\n🎉 Dataset preparation complete!")
+    print(f"\nDataset preparation complete!")
 
 if __name__ == "__main__":
     main()

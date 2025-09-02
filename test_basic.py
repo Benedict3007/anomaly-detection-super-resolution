@@ -10,23 +10,23 @@ def test_imports():
     """Test basic imports."""
     try:
         import torch
-        print(f"✅ PyTorch imported successfully: {torch.__version__}")
+        print(f"OK PyTorch imported successfully: {torch.__version__}")
     except ImportError as e:
-        print(f"❌ PyTorch import failed: {e}")
+        print(f"ERROR PyTorch import failed: {e}")
         return False
     
     try:
         import numpy as np
-        print(f"✅ NumPy imported successfully: {np.__version__}")
+        print(f"OK NumPy imported successfully: {np.__version__}")
     except ImportError as e:
-        print(f"❌ NumPy import failed: {e}")
+        print(f"ERROR NumPy import failed: {e}")
         return False
     
     try:
         import matplotlib
-        print(f"✅ Matplotlib imported successfully: {matplotlib.__version__}")
+        print(f"OK Matplotlib imported successfully: {matplotlib.__version__}")
     except ImportError as e:
-        print(f"❌ Matplotlib import failed: {e}")
+        print(f"ERROR Matplotlib import failed: {e}")
         return False
     
     return True
@@ -39,9 +39,9 @@ def test_paths():
     for dir_name in required_dirs:
         dir_path = project_root / dir_name
         if dir_path.exists():
-            print(f"✅ Directory exists: {dir_name}/")
+            print(f"OK Directory exists: {dir_name}/")
         else:
-            print(f"❌ Directory missing: {dir_name}/")
+            print(f"ERROR Directory missing: {dir_name}/")
             return False
     
     return True
@@ -53,10 +53,10 @@ def test_main_script():
         import importlib
         m = importlib.import_module("main")
         assert hasattr(m, "parse_args"), "parse_args not found in main"
-        print("✅ Main script imports successfully and exposes parse_args")
+        print("OK Main script imports successfully and exposes parse_args")
         return True
     except Exception as e:
-        print(f"❌ Main script import failed: {e}")
+        print(f"ERROR Main script import failed: {e}")
         return False
 
 def main():

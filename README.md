@@ -143,6 +143,22 @@ Note:
 - Training (`src/main.py`) validates super-resolution quality on a good-only validation set using PSNR/SSIM and does not compute anomaly AUC.
 - Anomaly AUC is computed only via the evaluator (`src/evaluate.py`) on the test set (good + bad).
 
+### Smoke test (prepare → train → evaluate)
+
+Run an end-to-end quick check that prepares the MVTec `grid` class at 128px HR and scale x4, trains DRCT for 5 epochs, and evaluates on the test set:
+
+```bash
+python scripts/smoke_test.py
+```
+
+Requirements:
+- The MVTec dataset is downloaded and extracted to `data/mvtec/` (`carpet`, `grid` present)
+- A Python environment with the dependencies installed (`pip install -r requirements.txt`)
+
+Outputs:
+- Training run under `workspace/experiment/drct/`
+- Evaluation images and metrics under `<run_dir>/eval_results/`
+
 ---
 
 ## Project Structure

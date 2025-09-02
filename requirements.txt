@@ -21,6 +21,7 @@ seaborn>=0.11.0
 tqdm>=4.62.0
 PyYAML>=6.0
 click>=8.0.0
+einops>=0.6.0
 
 # Development and Testing
 pytest>=6.0.0
